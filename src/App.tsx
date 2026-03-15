@@ -85,8 +85,8 @@ const fileToDataUrl = (file: File): Promise<string> => {
         let width = img.width;
         let height = img.height;
         
-        // Max dimension
-        const MAX_SIZE = 600;
+        // Max dimension (increased by 40% from 600 to 840)
+        const MAX_SIZE = 840;
         
         if (width > height) {
           if (width > MAX_SIZE) {
@@ -1972,7 +1972,9 @@ function PodForm() {
       });
       
       if (res.ok) {
-        navigate('/');
+        const data = await res.json();
+        const podId = isEdit ? id : data.id;
+        navigate(`/pod/${podId}`);
       } else {
         const data = await res.json();
         setErrorMsg(data.error || 'Failed to save pod');
@@ -2181,7 +2183,9 @@ function CartForm() {
       });
       
       if (res.ok) {
-        navigate(isEdit ? `/cart/${id}` : `/pod/${podId || formData.podId}`);
+        const data = await res.json();
+        const cartId = isEdit ? id : data.id;
+        navigate(`/cart/${cartId}`);
       } else {
         let errorMessage = 'Failed to save cart';
         try {
