@@ -1,0 +1,8 @@
+{
+  "name": "cart9",
+  "description": "Food cart pod explorer",
+  "requestFramePermissions": [
+    "geolocation",
+    "camera"
+  ]
+}
