@@ -511,11 +511,43 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.join(process.cwd(), "dist"), { index: false }));
+    // Add request logging to debug static file serving
+    app.use((req, res, next) => {
+      console.log(`[Static] Request: ${req.method} ${req.url}`);
+      next();
+    });
+    
+    app.get("/debug-assets", (req, res) => {
+      try {
+        const assetsPath = path.join(process.cwd(), "dist", "assets");
+        const files = fs.readdirSync(assetsPath);
+        const fileStats = files.map(f => {
+          const stat = fs.statSync(path.join(assetsPath, f));
+          return `${f}: ${stat.size} bytes`;
+        });
+        res.send(`Assets:\n${fileStats.join('\n')}`);
+      } catch (err) {
+        res.status(500).send(`Error: ${(err as Error).message}`);
+      }
+    });
+
+    app.use(express.static(path.join(process.cwd(), "dist"), { 
+      index: false,
+      setHeaders: (res, path) => {
+        if (path.endsWith('.css')) {
+          res.setHeader('Content-Type', 'text/css');
+        }
+      }
+    }));
+    
     app.get("*", (req, res) => {
+      console.log(`[Fallback] Serving index.html for: ${req.url}`);
       try {
         const indexPath = path.join(process.cwd(), "dist", "index.html");
         let html = fs.readFileSync(indexPath, "utf-8");
+        
+        // Remove crossorigin attributes that might cause CORS issues on some hosts
+        html = html.replace(/crossorigin/g, "");
         
         // Inject environment variables into the HTML so the frontend can read them at runtime
         const envScript = `<script>
