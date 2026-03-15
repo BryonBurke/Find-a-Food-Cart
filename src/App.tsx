@@ -311,6 +311,7 @@ function MapView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [pods, setPods] = useState<Pod[]>([]);
   const [carts, setCarts] = useState<Cart[]>([]);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const searchTag = searchParams.get('tag') || '';
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [isWatchingLocation, setIsWatchingLocation] = useState(true);
@@ -465,12 +466,15 @@ function MapView() {
       const data = await res.json();
       if (Array.isArray(data)) {
         setPods(data);
+        setFetchError(null);
       } else {
         console.error("Failed to fetch pods:", data);
+        setFetchError(data.error || "Failed to load pods");
         setPods([]);
       }
     } catch (err) {
       console.error("Failed to fetch pods:", err);
+      setFetchError((err as Error).message);
       setPods([]);
     }
   };
@@ -483,10 +487,12 @@ function MapView() {
         setCarts(data);
       } else {
         console.error("Failed to fetch carts:", data);
+        setFetchError(data.error || "Failed to load carts");
         setCarts([]);
       }
     } catch (err) {
       console.error("Failed to fetch carts:", err);
+      setFetchError((err as Error).message);
       setCarts([]);
     }
   };
@@ -626,6 +632,18 @@ function MapView() {
         >
           <MapZoomListener />
           <MapPanner location={userLocation} isActive={navState.isActive} panTrigger={panTrigger} resetTrigger={resetTrigger} onPanComplete={() => setMapTypeId('roadmap')} />
+
+          {fetchError && (
+            <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl shadow-lg z-[3000] max-w-md text-center">
+              <p className="font-bold">Error loading data</p>
+              <p className="text-sm">{fetchError}</p>
+              {fetchError.includes('credentials missing') && (
+                <p className="text-xs mt-2 font-mono bg-red-50 p-2 rounded">
+                  Make sure FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY are set in your Render environment variables.
+                </p>
+              )}
+            </div>
+          )}
 
           {userLocation && (
             <AdvancedMarker position={{ lat: userLocation[0], lng: userLocation[1] }}>
@@ -1925,6 +1943,9 @@ function PodForm() {
     imageUrl: ''
   });
 
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
     if (isEdit) {
       fetch(`/api/pods/${id}`).then(res => res.json()).then(setFormData);
@@ -1934,21 +1955,32 @@ function PodForm() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    const token = await user.getIdToken();
-    const method = isEdit ? 'PUT' : 'POST';
-    const url = isEdit ? `/api/pods/${id}` : '/api/pods';
-    
-    const res = await fetch(url, {
-      method,
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(formData)
-    });
-    
-    if (res.ok) {
-      navigate('/');
+    setIsSubmitting(true);
+    setErrorMsg(null);
+    try {
+      const token = await user.getIdToken();
+      const method = isEdit ? 'PUT' : 'POST';
+      const url = isEdit ? `/api/pods/${id}` : '/api/pods';
+      
+      const res = await fetch(url, {
+        method,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(formData)
+      });
+      
+      if (res.ok) {
+        navigate('/');
+      } else {
+        const data = await res.json();
+        setErrorMsg(data.error || 'Failed to save pod');
+      }
+    } catch (err) {
+      setErrorMsg((err as Error).message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1960,6 +1992,12 @@ function PodForm() {
         </button>
         <h1 className="text-3xl font-bold">{isEdit ? 'Edit Pod' : 'Add New Pod'}</h1>
       </div>
+
+      {errorMsg && (
+        <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
+          {errorMsg}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6 bg-white p-8 rounded-3xl shadow-sm border border-stone-100">
         <div>
@@ -2016,9 +2054,10 @@ function PodForm() {
 
         <button
           type="submit"
-          className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-emerald-700 transition-all shadow-lg hover:shadow-emerald-200"
+          disabled={isSubmitting}
+          className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-emerald-700 transition-all shadow-lg hover:shadow-emerald-200 disabled:opacity-50"
         >
-          {isEdit ? 'Save Changes' : 'Create Pod'}
+          {isSubmitting ? 'Saving...' : (isEdit ? 'Save Changes' : 'Create Pod')}
         </button>
       </form>
     </div>
@@ -2051,6 +2090,7 @@ function CartForm() {
     rating: 0
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [foodItems, setFoodItems] = useState<{name: string, tag: string}[]>([]);
   const [newFoodName, setNewFoodName] = useState('');
   const [newFoodTag, setNewFoodTag] = useState('');

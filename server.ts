@@ -12,7 +12,10 @@ function getDb() {
   if (!db) {
     const projectId = process.env.FIREBASE_PROJECT_ID;
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    if (privateKey) {
+      privateKey = privateKey.replace(/^"|"$/g, '').replace(/^'|'$/g, '');
+    }
 
     if (!projectId || !clientEmail || !privateKey) {
       console.warn("Firebase credentials missing. Please set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in your environment variables.");
@@ -88,6 +91,7 @@ async function startServer() {
     }
     const idToken = authHeader.split('Bearer ')[1];
     try {
+      getDb(); // Ensure admin is initialized
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       (req as any).user = decodedToken;
       next();
