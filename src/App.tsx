@@ -15,6 +15,7 @@ import { EditModeProvider, useEditMode } from './EditModeContext';
 import Login from './Login';
 import { signOut } from 'firebase/auth';
 import { auth } from './firebase';
+import { getEnv } from './env';
 
 // Custom Food Cart Icon
 const CartIcon = () => (
@@ -404,7 +405,7 @@ function MapView() {
   const [panTrigger, setPanTrigger] = useState(0);
 
   useEffect(() => {
-    console.log("Current Map ID:", import.meta.env.VITE_GOOGLE_MAPS_MAP_ID);
+    console.log("Current Map ID:", getEnv('VITE_GOOGLE_MAPS_MAP_ID'));
     if (isAddingPod) {
       window.dispatchEvent(new Event('locate-me'));
     }
@@ -601,11 +602,11 @@ function MapView() {
 
   return (
     <div className="absolute inset-0">
-      <APIProvider apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}>
+      <APIProvider apiKey={getEnv('VITE_GOOGLE_MAPS_API_KEY') || ''}>
         <Map
           defaultZoom={13}
           defaultCenter={{ lat: userLocation[0], lng: userLocation[1] }}
-          mapId={import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID"}
+          mapId={getEnv('VITE_GOOGLE_MAPS_MAP_ID') || "DEMO_MAP_ID"}
           mapTypeId={mapTypeId}
           onMapTypeIdChanged={(e) => setMapTypeId(e.map.getMapTypeId())}
           onClick={(e) => {
@@ -2696,11 +2697,11 @@ function PodMapPage() {
       )}
 
       <div className="flex-1 relative">
-        <APIProvider apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}>
+        <APIProvider apiKey={getEnv('VITE_GOOGLE_MAPS_API_KEY') || ''}>
           <Map
             defaultZoom={19}
             defaultCenter={{ lat: pod.latitude, lng: pod.longitude }}
-            mapId={import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID"}
+            mapId={getEnv('VITE_GOOGLE_MAPS_MAP_ID') || "DEMO_MAP_ID"}
             disableDefaultUI={true}
             disableDoubleClickZoom={true}
             gestureHandling="greedy"

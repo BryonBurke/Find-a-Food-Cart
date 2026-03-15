@@ -1,13 +1,14 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
+import { getEnv } from './env';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+  apiKey: getEnv('VITE_FIREBASE_API_KEY'),
+  authDomain: getEnv('VITE_FIREBASE_AUTH_DOMAIN'),
+  projectId: getEnv('VITE_FIREBASE_PROJECT_ID'),
+  storageBucket: getEnv('VITE_FIREBASE_STORAGE_BUCKET'),
+  messagingSenderId: getEnv('VITE_FIREBASE_MESSAGING_SENDER_ID'),
+  appId: getEnv('VITE_FIREBASE_APP_ID')
 };
 
 // Check if config is missing to prevent blank screen crashes
@@ -15,14 +16,14 @@ if (!firebaseConfig.apiKey) {
   console.error("FIREBASE CONFIG IS MISSING! Please check your environment variables.");
   if (typeof document !== 'undefined') {
     const envDump = JSON.stringify({
-      VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY || "MISSING",
-      VITE_FIREBASE_AUTH_DOMAIN: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "MISSING",
-      VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID || "MISSING",
-      VITE_FIREBASE_STORAGE_BUCKET: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "MISSING",
-      VITE_FIREBASE_MESSAGING_SENDER_ID: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "MISSING",
-      VITE_FIREBASE_APP_ID: import.meta.env.VITE_FIREBASE_APP_ID || "MISSING",
-      VITE_GOOGLE_MAPS_API_KEY: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "MISSING",
-      VITE_GOOGLE_MAPS_MAP_ID: import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || "MISSING"
+      VITE_FIREBASE_API_KEY: getEnv('VITE_FIREBASE_API_KEY') || "MISSING",
+      VITE_FIREBASE_AUTH_DOMAIN: getEnv('VITE_FIREBASE_AUTH_DOMAIN') || "MISSING",
+      VITE_FIREBASE_PROJECT_ID: getEnv('VITE_FIREBASE_PROJECT_ID') || "MISSING",
+      VITE_FIREBASE_STORAGE_BUCKET: getEnv('VITE_FIREBASE_STORAGE_BUCKET') || "MISSING",
+      VITE_FIREBASE_MESSAGING_SENDER_ID: getEnv('VITE_FIREBASE_MESSAGING_SENDER_ID') || "MISSING",
+      VITE_FIREBASE_APP_ID: getEnv('VITE_FIREBASE_APP_ID') || "MISSING",
+      VITE_GOOGLE_MAPS_API_KEY: getEnv('VITE_GOOGLE_MAPS_API_KEY') || "MISSING",
+      VITE_GOOGLE_MAPS_MAP_ID: getEnv('VITE_GOOGLE_MAPS_MAP_ID') || "MISSING"
     }, null, 2);
 
     document.body.innerHTML = `

@@ -2,6 +2,7 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import admin from "firebase-admin";
 import path from "path";
+import fs from "fs";
 import { GoogleGenAI, Type } from "@google/genai";
 
 // Initialize Firebase Admin
@@ -510,9 +511,32 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.join(process.cwd(), "dist")));
+    app.use(express.static(path.join(process.cwd(), "dist"), { index: false }));
     app.get("*", (req, res) => {
-      res.sendFile(path.join(process.cwd(), "dist", "index.html"));
+      try {
+        const indexPath = path.join(process.cwd(), "dist", "index.html");
+        let html = fs.readFileSync(indexPath, "utf-8");
+        
+        // Inject environment variables into the HTML so the frontend can read them at runtime
+        const envScript = `<script>
+          window.__ENV__ = {
+            VITE_FIREBASE_API_KEY: ${JSON.stringify(process.env.VITE_FIREBASE_API_KEY || "")},
+            VITE_FIREBASE_AUTH_DOMAIN: ${JSON.stringify(process.env.VITE_FIREBASE_AUTH_DOMAIN || "")},
+            VITE_FIREBASE_PROJECT_ID: ${JSON.stringify(process.env.VITE_FIREBASE_PROJECT_ID || "")},
+            VITE_FIREBASE_STORAGE_BUCKET: ${JSON.stringify(process.env.VITE_FIREBASE_STORAGE_BUCKET || "")},
+            VITE_FIREBASE_MESSAGING_SENDER_ID: ${JSON.stringify(process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "")},
+            VITE_FIREBASE_APP_ID: ${JSON.stringify(process.env.VITE_FIREBASE_APP_ID || "")},
+            VITE_GOOGLE_MAPS_API_KEY: ${JSON.stringify(process.env.VITE_GOOGLE_MAPS_API_KEY || "")},
+            VITE_GOOGLE_MAPS_MAP_ID: ${JSON.stringify(process.env.VITE_GOOGLE_MAPS_MAP_ID || "")}
+          };
+        </script>`;
+        
+        html = html.replace("</head>", `${envScript}</head>`);
+        res.send(html);
+      } catch (err) {
+        console.error("Error serving index.html:", err);
+        res.status(500).send("Error loading application");
+      }
     });
   }
 
