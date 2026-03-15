@@ -10,11 +10,47 @@ let db: admin.firestore.Firestore | null = null;
 
 function getDb() {
   if (!db) {
-    const projectId = process.env.FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    let privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    let projectId = process.env.FIREBASE_PROJECT_ID;
+    let clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+    if (projectId) projectId = projectId.trim().replace(/^["']|["']$/g, '');
+    if (clientEmail) clientEmail = clientEmail.trim().replace(/^["']|["']$/g, '');
+
     if (privateKey) {
-      privateKey = privateKey.replace(/^"|"$/g, '').replace(/^'|'$/g, '');
+      // Handle case where user might have pasted the entire JSON service account file
+      if (privateKey.trim().startsWith('{')) {
+        try {
+          const serviceAccount = JSON.parse(privateKey);
+          if (serviceAccount.private_key) privateKey = serviceAccount.private_key;
+          if (serviceAccount.project_id && !projectId) { /* could potentially use this too */ }
+        } catch (e) {
+          // Not valid JSON, continue with string processing
+        }
+      }
+
+      // Clean up the string
+      privateKey = privateKey.trim();
+      
+      // Remove surrounding quotes (common when pasting into env var fields)
+      if ((privateKey.startsWith('"') && privateKey.endsWith('"')) || 
+          (privateKey.startsWith("'") && privateKey.endsWith("'"))) {
+        privateKey = privateKey.substring(1, privateKey.length - 1);
+      }
+
+      // Replace literal \n with actual newlines
+      privateKey = privateKey.replace(/\\n/g, '\n');
+      
+      // Ensure the key has the correct PEM headers and footers with newlines
+      if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+        privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----`;
+      } else {
+        // If it has headers, make sure they are on their own lines
+        privateKey = privateKey.replace('-----BEGIN PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----\n');
+        privateKey = privateKey.replace('-----END PRIVATE KEY-----', '\n-----END PRIVATE KEY-----');
+        // Remove any double newlines we might have created
+        privateKey = privateKey.replace(/\n\n+/g, '\n');
+      }
     }
 
     if (!projectId || !clientEmail || !privateKey) {
@@ -22,16 +58,21 @@ function getDb() {
       throw new Error("Firebase credentials missing");
     }
 
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId,
-          clientEmail,
-          privateKey,
-        }),
-      });
+    try {
+      if (!admin.apps.length) {
+        admin.initializeApp({
+          credential: admin.credential.cert({
+            projectId,
+            clientEmail,
+            privateKey,
+          }),
+        });
+      }
+      db = admin.firestore();
+    } catch (error) {
+      console.error("Firebase initialization failed:", error);
+      throw new Error(`Firebase initialization failed: ${(error as Error).message}`);
     }
-    db = admin.firestore();
   }
   return db;
 }
