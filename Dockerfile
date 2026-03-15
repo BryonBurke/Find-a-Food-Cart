@@ -13,14 +13,12 @@ RUN npm install
 # Copy the rest of your application code
 COPY . .
 
-# Build the Vite frontend (creates the /dist folder)
-RUN npm run build
-
 # Set the environment to production so the server uses the built files
 ENV NODE_ENV=production
 
 # Expose the port your Express server runs on
 EXPOSE 3000
 
-# Start the Express backend
-CMD ["npx", "tsx", "server.ts"]
+# Build the Vite frontend at runtime so it has access to Render's environment variables
+# (Render does not pass dashboard environment variables to the Docker build step)
+CMD npm run build && npx tsx server.ts
