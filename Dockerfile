@@ -16,6 +16,9 @@ COPY . .
 # Build the Vite frontend (creates the /dist folder)
 RUN npm run build
 
+# Set the environment to production so the server uses the built files
+ENV NODE_ENV=production
+
 # Expose the port your Express server runs on
 EXPOSE 3000
 
