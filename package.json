@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build",
+    "start": "tsx server.ts",
+    "build": "node -e \"console.log('Available ENV keys during build:', Object.keys(process.env).filter(k => k.startsWith('VITE_') || k.startsWith('FIREBASE_')))\" && vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
