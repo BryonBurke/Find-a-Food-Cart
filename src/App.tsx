@@ -715,7 +715,7 @@ function MapView() {
               <AdvancedMarker 
                 key={pod.id} 
                 position={{ lat: pod.latitude, lng: pod.longitude }}
-                gmpClickable={zoomLevel > 14}
+                gmpClickable={true}
                 draggable={!!user}
                 onDragStart={() => setIsDragging(true)}
                 onDragEnd={(e) => {
@@ -724,17 +724,17 @@ function MapView() {
                     handlePodDragEnd(pod.id, e.latLng.lat(), e.latLng.lng());
                   }
                 }}
-                onClick={zoomLevel > 14 ? () => {
+                onClick={() => {
                   if (isDragging) return;
                   if (searchTag) {
                     navigate(`/pod/${pod.id}?highlightTag=${searchTag}`);
                   } else {
                     navigate(`/pod/${pod.id}`);
                   }
-                } : undefined}
+                }}
               >
                 <div 
-                  className={`relative flex flex-col items-center group z-10 ${zoomLevel > 14 ? 'cursor-pointer' : 'pointer-events-none'}`}
+                  className="relative flex flex-col items-center group z-10 cursor-pointer"
                   style={{ touchAction: 'none', WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
                 >
                   <div className="absolute bottom-full mb-1 bg-stone-900/90 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-xl border border-stone-700 whitespace-nowrap text-sm font-bold text-white pointer-events-none hidden group-hover:block z-[100]">
@@ -940,19 +940,6 @@ function MapView() {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            <button 
-              onClick={() => {
-                if (isZoomedIn) {
-                  window.dispatchEvent(new Event('reset-map'));
-                } else {
-                  window.dispatchEvent(new Event('locate-me'));
-                }
-              }}
-              className="flex sm:hidden items-center justify-center px-6 h-14 bg-white text-stone-800 rounded-full shadow-lg hover:bg-stone-50 transition-transform hover:scale-110 font-bold gap-2 border border-stone-200"
-            >
-              <Navigation size={20} className={isZoomedIn ? "text-emerald-600" : ""} />
-              {isZoomedIn ? 'Zoom out' : 'Zoom in on me'}
-            </button>
             {user && editMode && (
               <button
                 onClick={() => setSearchParams({ mode: 'add' })}
@@ -1054,7 +1041,18 @@ function PodPage() {
 
   const [selectedCartForMenu, setSelectedCartForMenu] = useState<Cart | null>(null);
   const [slideshowIndex, setSlideshowIndex] = useState<number | null>(null);
+  const [menuSlideshowIndex, setMenuSlideshowIndex] = useState<number | null>(null);
   const [localFavorites, setLocalFavorites] = useState<string[]>([]);
+
+  const menuGallery = useMemo(() => {
+    if (!selectedCartForMenu) return [];
+    try {
+      const gallery = typeof selectedCartForMenu.menuGallery === 'string' ? JSON.parse(selectedCartForMenu.menuGallery) : (Array.isArray(selectedCartForMenu.menuGallery) ? selectedCartForMenu.menuGallery : []);
+      return Array.isArray(gallery) ? gallery : [];
+    } catch (e) {
+      return [];
+    }
+  }, [selectedCartForMenu]);
 
   useEffect(() => {
     if (user && carts.length > 0) {
@@ -1167,6 +1165,7 @@ function PodPage() {
         )}
       </AnimatePresence>
 
+      {/* PodPage Menu Modal */}
       <AnimatePresence>
         {selectedCartForMenu && (
           <motion.div 
@@ -1193,40 +1192,71 @@ function PodPage() {
                 </button>
               </div>
               <div className="p-6 overflow-y-auto flex-1">
-                {(() => {
-                  let menuGallery: string[] = [];
-                  try {
-                    menuGallery = typeof selectedCartForMenu.menuGallery === 'string' ? JSON.parse(selectedCartForMenu.menuGallery) : (Array.isArray(selectedCartForMenu.menuGallery) ? selectedCartForMenu.menuGallery : []);
-                    if (!Array.isArray(menuGallery)) menuGallery = [];
-                  } catch (e) {
-                    menuGallery = [];
-                  }
-                  
-                  if (menuGallery.length > 0) {
-                    return (
-                      <div className="flex flex-col gap-6">
-                        {menuGallery.map((url, idx) => (
-                          <img 
-                            key={idx} 
-                            src={url} 
-                            alt={`Menu page ${idx + 1}`} 
-                            className="w-full rounded-xl shadow-sm border border-stone-100"
-                            referrerPolicy="no-referrer"
-                          />
-                        ))}
-                      </div>
-                    );
-                  } else {
-                    return (
-                      <div className="text-center py-12">
-                        <FileText size={48} className="mx-auto text-stone-300 mb-4" />
-                        <p className="text-stone-500 text-lg">No menu photos available for this cart.</p>
-                      </div>
-                    );
-                  }
-                })()}
+                {menuGallery.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-4">
+                    {menuGallery.map((url, idx) => (
+                      <img 
+                        key={idx} 
+                        src={url} 
+                        alt={`Menu page ${idx + 1}`} 
+                        className="w-full rounded-xl shadow-sm border border-stone-100 cursor-pointer hover:opacity-80 transition-opacity"
+                        referrerPolicy="no-referrer"
+                        onClick={() => setMenuSlideshowIndex(idx)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <FileText size={48} className="mx-auto text-stone-300 mb-4" />
+                    <p className="text-stone-500 text-lg">No menu photos available for this cart.</p>
+                  </div>
+                )}
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {menuSlideshowIndex !== null && selectedCartForMenu && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black z-[5000] flex items-center justify-center"
+            onClick={() => setMenuSlideshowIndex(null)}
+          >
+            <button 
+              className="absolute top-4 right-4 text-white p-2 hover:bg-white/20 rounded-full transition-colors z-[5001]"
+              onClick={() => setMenuSlideshowIndex(null)}
+            >
+              <X size={32} />
+            </button>
+            <button 
+              className="absolute top-4 left-4 text-white px-4 py-2 hover:bg-white/20 rounded-full transition-colors z-[5001] font-bold"
+              onClick={() => { setMenuSlideshowIndex(null); }}
+            >
+              Done
+            </button>
+            <button 
+              className="absolute left-4 text-white p-4 hover:bg-white/20 rounded-full transition-colors z-[5001]"
+              onClick={(e) => { e.stopPropagation(); setMenuSlideshowIndex((prev) => (prev! - 1 + menuGallery.length) % menuGallery.length); }}
+            >
+              <ChevronLeft size={48} />
+            </button>
+            <button 
+              className="absolute right-4 text-white p-4 hover:bg-white/20 rounded-full transition-colors z-[5001]"
+              onClick={(e) => { e.stopPropagation(); setMenuSlideshowIndex((prev) => (prev! + 1) % menuGallery.length); }}
+            >
+              <ChevronRight size={48} />
+            </button>
+            
+            <img 
+              src={menuGallery[menuSlideshowIndex]}
+              alt={`Menu page ${menuSlideshowIndex + 1}`}
+              className="w-full h-full object-contain"
+              referrerPolicy="no-referrer"
+            />
           </motion.div>
         )}
       </AnimatePresence>
@@ -1350,7 +1380,7 @@ function PodPage() {
                   <Heart size={18} fill={localFavorites.includes(carts[slideshowIndex].id) ? "currentColor" : "none"} />
                 </button>
                 <button 
-                  onClick={(e) => { e.stopPropagation(); setSelectedCartForMenu(carts[slideshowIndex]); setSlideshowIndex(null); }}
+                  onClick={(e) => { e.stopPropagation(); setSelectedCartForMenu(carts[slideshowIndex]); setMenuSlideshowIndex(0); setSlideshowIndex(null); }}
                   className="bg-white text-black px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-stone-200 transition-colors text-sm sm:text-base"
                 >
                   <FileText size={18} /> Menu
@@ -1492,6 +1522,7 @@ function PodPage() {
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedCartForMenu(cart);
+                        setMenuSlideshowIndex(0);
                       }}
                       className="text-stone-600 hover:text-stone-900 font-bold text-sm flex items-center gap-1 bg-stone-100 hover:bg-stone-200 px-3 py-1.5 rounded-lg transition-colors"
                     >
@@ -3349,7 +3380,7 @@ function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPage?: boo
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             className="absolute top-full right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col py-2 z-[3000]"
           >
-            {isHome && (
+            {isHome && user && (
               <button 
                 onClick={() => {
                   if (isZoomedIn) {
@@ -3365,9 +3396,17 @@ function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPage?: boo
               </button>
             )}
             
-            <Link to="/favorites" onClick={() => setMenuOpen(false)} className="w-full px-4 py-3 text-sm font-semibold text-stone-700 hover:bg-stone-100 transition-colors flex items-center text-left">
-              View All Favorites
-            </Link>
+            {user && (
+              <Link to="/favorites" onClick={() => setMenuOpen(false)} className="w-full px-4 py-3 text-sm font-semibold text-stone-700 hover:bg-stone-100 transition-colors flex items-center text-left">
+                View All Favorites
+              </Link>
+            )}
+
+            {!user && (
+              <Link to="/login?mode=signup" onClick={() => setMenuOpen(false)} className="w-full px-4 py-3 text-sm font-semibold text-stone-700 hover:bg-stone-100 transition-colors flex items-center text-left">
+                Make an Account
+              </Link>
+            )}
 
             {isModerator && (
               <Link to="/moderator" onClick={() => setMenuOpen(false)} className="px-4 py-3 text-sm font-semibold text-stone-700 hover:bg-stone-100 transition-colors text-left">Moderator</Link>
@@ -3654,7 +3693,18 @@ function FavoritesPage() {
   
   const [selectedCartForMenu, setSelectedCartForMenu] = useState<Cart | null>(null);
   const [slideshowIndex, setSlideshowIndex] = useState<number | null>(null);
+  const [menuSlideshowIndex, setMenuSlideshowIndex] = useState<number | null>(null);
   const [localFavorites, setLocalFavorites] = useState<string[]>([]);
+
+  const menuGallery = useMemo(() => {
+    if (!selectedCartForMenu) return [];
+    try {
+      const gallery = typeof selectedCartForMenu.menuGallery === 'string' ? JSON.parse(selectedCartForMenu.menuGallery) : (Array.isArray(selectedCartForMenu.menuGallery) ? selectedCartForMenu.menuGallery : []);
+      return Array.isArray(gallery) ? gallery : [];
+    } catch (e) {
+      return [];
+    }
+  }, [selectedCartForMenu]);
 
   useEffect(() => {
     if (!user) {
@@ -3784,6 +3834,7 @@ function FavoritesPage() {
         )}
       </AnimatePresence>
 
+      {/* FavoritesPage Menu Modal */}
       <AnimatePresence>
         {slideshowIndex !== null && favoriteCarts[slideshowIndex] && (
           <motion.div 
@@ -3831,7 +3882,7 @@ function FavoritesPage() {
                   <Heart size={18} fill={localFavorites.includes(favoriteCarts[slideshowIndex].id) ? "currentColor" : "none"} />
                 </button>
                 <button 
-                  onClick={(e) => { e.stopPropagation(); setSelectedCartForMenu(favoriteCarts[slideshowIndex]); setSlideshowIndex(null); }}
+                  onClick={(e) => { e.stopPropagation(); setSelectedCartForMenu(favoriteCarts[slideshowIndex]); setMenuSlideshowIndex(0); setSlideshowIndex(null); }}
                   className="bg-white text-black px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-stone-200 transition-colors text-sm sm:text-base"
                 >
                   <FileText size={18} /> Menu
