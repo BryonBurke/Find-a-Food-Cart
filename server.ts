@@ -215,6 +215,13 @@ async function startServer() {
     try {
       const snapshot = await getDb().collection("pods").get();
       let pods = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // Filter out the Thompson Track pod as requested
+      pods = pods.filter((p: any) => {
+        const name = (p.name || '').toLowerCase();
+        return !name.includes('thompson track');
+      });
+
       if (req.query.includeDeleted !== 'true') {
         pods = pods.filter((p: any) => !p.deletedAt);
       }
@@ -230,6 +237,13 @@ async function startServer() {
       const doc = await getDb().collection("pods").doc(req.params.id).get();
       if (!doc.exists) return res.status(404).json({ error: "Pod not found" });
       const data: any = { id: doc.id, ...doc.data() };
+      
+      // Hide Thompson Track pod if requested
+      const name = (data.name || '').toLowerCase();
+      if (name.includes('thompson track')) {
+        return res.status(404).json({ error: "Pod not found" });
+      }
+
       if (data.deletedAt && req.query.includeDeleted !== 'true') {
         return res.status(404).json({ error: "Pod not found" });
       }
