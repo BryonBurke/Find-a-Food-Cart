@@ -670,7 +670,7 @@ function MapView() {
     <div className="absolute inset-0">
       <APIProvider apiKey={getEnv('VITE_GOOGLE_MAPS_API_KEY') || ''}>
         <GoogleMap
-          defaultZoom={13}
+          defaultZoom={12}
           defaultCenter={{ lat: userLocation[0], lng: userLocation[1] }}
           mapId={getEnv('VITE_GOOGLE_MAPS_MAP_ID') || "DEMO_MAP_ID"}
           mapTypeId={mapTypeId}
@@ -681,8 +681,32 @@ function MapView() {
             } else if (e.detail.latLng && e.map) {
               const currentZoom = e.map.getZoom();
               if (currentZoom && currentZoom <= 14) {
-                e.map.panTo(e.detail.latLng);
-                e.map.setZoom(16);
+                const tapLat = e.detail.latLng.lat;
+                const tapLng = e.detail.latLng.lng;
+                
+                // Find pods near the tap
+                const nearbyPods = filteredPods.filter(pod => {
+                  const dist = getDistance(tapLat, tapLng, pod.latitude, pod.longitude);
+                  return dist < 500; // 500 meters
+                });
+                
+                if (nearbyPods.length > 0) {
+                  // Find closest pod
+                  let closestPod = nearbyPods[0];
+                  let minDistance = getDistance(tapLat, tapLng, closestPod.latitude, closestPod.longitude);
+                  nearbyPods.forEach(pod => {
+                    const dist = getDistance(tapLat, tapLng, pod.latitude, pod.longitude);
+                    if (dist < minDistance) {
+                      minDistance = dist;
+                      closestPod = pod;
+                    }
+                  });
+
+                  e.map.setCenter({ lat: closestPod.latitude, lng: closestPod.longitude });
+                } else {
+                  e.map.setCenter(e.detail.latLng);
+                }
+                e.map.setZoom(15);
               }
             }
           }}
