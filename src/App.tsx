@@ -52,6 +52,19 @@ const getTwoLineName = (name: string) => {
   return meaningfulWords[0] || words[0] || '';
 };
 
+// Custom Pod Icon
+const PodIcon = ({ name, hasOpenCart, isLevel1 }: { name: string, hasOpenCart: boolean, isLevel1: boolean }) => (
+  <div 
+    className={`bg-violet-600 flex items-center justify-center shadow-lg border-2 ${hasOpenCart ? 'border-green-500' : 'border-white'} text-white transition-all group-hover:scale-110 pointer-events-none ${isLevel1 ? 'w-4 h-4' : 'w-10 h-10'} ${hasOpenCart ? 'ring-4 ring-green-500/80' : ''} animate-pulse`}
+  >
+    {!isLevel1 && (
+      <span className="text-[10px] font-bold text-center leading-tight pointer-events-none whitespace-pre-wrap px-0.5">
+        {getTwoLineName(name)}
+      </span>
+    )}
+  </div>
+);
+
 const UserIcon = () => (
   <div className="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg animate-pulse"></div>
 );
@@ -740,15 +753,7 @@ function MapView() {
                   <div className="absolute bottom-full mb-1 bg-stone-900/90 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-xl border border-stone-700 whitespace-nowrap text-sm font-bold text-white pointer-events-none hidden group-hover:block z-[100]">
                     {pod.name}
                   </div>
-                  <div 
-                    className={`bg-violet-600 flex items-center justify-center shadow-lg border-2 border-white text-white transition-all group-hover:scale-110 pointer-events-none ${isLevel1 ? 'w-4 h-4' : 'w-10 h-10'} ${hasOpenCart ? 'ring-4 ring-green-500/80' : ''}`}
-                  >
-                    {!isLevel1 && (
-                      <span className="text-[10px] font-bold text-center leading-tight pointer-events-none whitespace-pre-wrap px-0.5">
-                        {getTwoLineName(pod.name)}
-                      </span>
-                    )}
-                  </div>
+                  <PodIcon name={pod.name} hasOpenCart={hasOpenCart} isLevel1={isLevel1} />
                 </div>
               </AdvancedMarker>
             );
@@ -1228,13 +1233,13 @@ function PodPage() {
           >
             <button 
               className="absolute top-4 right-4 text-white p-2 hover:bg-white/20 rounded-full transition-colors z-[5001]"
-              onClick={() => setMenuSlideshowIndex(null)}
+              onClick={() => { setMenuSlideshowIndex(null); setSelectedCartForMenu(null); }}
             >
               <X size={32} />
             </button>
             <button 
               className="absolute top-4 left-4 text-white px-4 py-2 hover:bg-white/20 rounded-full transition-colors z-[5001] font-bold"
-              onClick={() => { setMenuSlideshowIndex(null); }}
+              onClick={() => { setMenuSlideshowIndex(null); setSelectedCartForMenu(null); }}
             >
               Done
             </button>
@@ -3835,6 +3840,51 @@ function FavoritesPage() {
       </AnimatePresence>
 
       {/* FavoritesPage Menu Modal */}
+      <AnimatePresence>
+        {menuSlideshowIndex !== null && selectedCartForMenu && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black z-[5000] flex items-center justify-center"
+            onClick={() => setMenuSlideshowIndex(null)}
+          >
+            <button 
+              className="absolute top-4 right-4 text-white p-2 hover:bg-white/20 rounded-full transition-colors z-[5001]"
+              onClick={() => { setMenuSlideshowIndex(null); setSelectedCartForMenu(null); }}
+            >
+              <X size={32} />
+            </button>
+            <button 
+              className="absolute top-4 left-4 text-white px-4 py-2 hover:bg-white/20 rounded-full transition-colors z-[5001] font-bold"
+              onClick={() => { setMenuSlideshowIndex(null); setSelectedCartForMenu(null); }}
+            >
+              Done
+            </button>
+            <button 
+              className="absolute left-4 text-white p-4 hover:bg-white/20 rounded-full transition-colors z-[5001]"
+              onClick={(e) => { e.stopPropagation(); setMenuSlideshowIndex((prev) => (prev! - 1 + menuGallery.length) % menuGallery.length); }}
+            >
+              <ChevronLeft size={48} />
+            </button>
+            <button 
+              className="absolute right-4 text-white p-4 hover:bg-white/20 rounded-full transition-colors z-[5001]"
+              onClick={(e) => { e.stopPropagation(); setMenuSlideshowIndex((prev) => (prev! + 1) % menuGallery.length); }}
+            >
+              <ChevronRight size={48} />
+            </button>
+            
+            <img 
+              src={menuGallery[menuSlideshowIndex]}
+              alt={`Menu page ${menuSlideshowIndex + 1}`}
+              className="w-full h-full object-contain"
+              referrerPolicy="no-referrer"
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* FavoritesPage Cart Slideshow */}
       <AnimatePresence>
         {slideshowIndex !== null && favoriteCarts[slideshowIndex] && (
           <motion.div 
