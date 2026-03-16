@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect, FormEvent, ChangeEvent, MouseEvent, useMemo, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
-import { APIProvider, Map, AdvancedMarker, Pin, useMap, useMapsLibrary } from '@vis.gl/react-google-maps';
+import { APIProvider, Map as GoogleMap, AdvancedMarker, Pin, useMap, useMapsLibrary } from '@vis.gl/react-google-maps';
 import { MapPin, Plus, Edit2, Trash2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Utensils, Info, Camera, Star, Instagram, Globe, FileText, ExternalLink, Navigation, X, Clock, Map as MapIcon, List, Play, Square, Search, Menu, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Pod, Cart } from './types';
@@ -304,6 +304,29 @@ function MapPanner({ location, isActive, panTrigger, resetTrigger, onPanComplete
   return null;
 }
 
+function MapFitter({ pods, searchTag }: { pods: Pod[], searchTag: string }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (map && searchTag && pods.length > 0) {
+      const bounds = new google.maps.LatLngBounds();
+      pods.forEach(pod => {
+        bounds.extend({ lat: pod.latitude, lng: pod.longitude });
+      });
+      
+      map.fitBounds(bounds, 50);
+      
+      if (pods.length === 1) {
+        const listener = google.maps.event.addListenerOnce(map, 'bounds_changed', () => {
+          if (map.getZoom()! > 16) map.setZoom(16);
+        });
+      }
+    }
+  }, [map, searchTag, pods]);
+
+  return null;
+}
+
 function MapView() {
   const { user } = useAuth();
   const { editMode } = useEditMode();
@@ -330,6 +353,10 @@ function MapView() {
   const [showSteps, setShowSteps] = useState(false);
   const [mapTypeId, setMapTypeId] = useState('roadmap');
   const [resetTrigger, setResetTrigger] = useState(0);
+
+  const [showWelcomeTip, setShowWelcomeTip] = useState(() => {
+    return localStorage.getItem('hideWelcomeTip') !== 'true';
+  });
 
   const [isZoomedIn, setIsZoomedIn] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(13);
@@ -584,16 +611,36 @@ function MapView() {
 
   const filteredPods = useMemo(() => {
     if (!searchTag || searchTag.length < 2) return pods;
-    const tag = searchTag.toUpperCase();
+    const search = searchTag.toUpperCase();
     
+    const tagToNameMap = new Map<string, string>();
+    carts.forEach(c => {
+      try {
+        const tags = typeof c.tags === 'string' ? JSON.parse(c.tags || '[]') : (Array.isArray(c.tags) ? c.tags : []);
+        if (Array.isArray(tags)) {
+          tags.forEach(t => {
+            if (typeof t === 'object' && t !== null && t.tag && t.name) {
+              tagToNameMap.set(t.tag.toUpperCase(), t.name.toUpperCase());
+            }
+          });
+        }
+      } catch(e) {}
+    });
+
     const matchingCartPodIds = new Set(
       carts.filter(c => {
         try {
           const tags = typeof c.tags === 'string' ? JSON.parse(c.tags || '[]') : (Array.isArray(c.tags) ? c.tags : []);
           return Array.isArray(tags) && tags.some(t => {
-            if (typeof t === 'string') return t.toUpperCase().includes(tag);
+            if (typeof t === 'string') {
+              const upper = t.toUpperCase();
+              const fullName = tagToNameMap.get(upper) || upper;
+              return fullName.includes(search) || upper.includes(search);
+            }
             if (typeof t === 'object' && t !== null) {
-              return (t.name && t.name.toUpperCase().includes(tag)) || (t.tag && t.tag.toUpperCase().includes(tag));
+              const nameMatch = t.name && t.name.toUpperCase().includes(search);
+              const tagMatch = t.tag && t.tag.toUpperCase().includes(search);
+              return nameMatch || tagMatch;
             }
             return false;
           });
@@ -609,7 +656,7 @@ function MapView() {
   return (
     <div className="absolute inset-0">
       <APIProvider apiKey={getEnv('VITE_GOOGLE_MAPS_API_KEY') || ''}>
-        <Map
+        <GoogleMap
           defaultZoom={13}
           defaultCenter={{ lat: userLocation[0], lng: userLocation[1] }}
           mapId={getEnv('VITE_GOOGLE_MAPS_MAP_ID') || "DEMO_MAP_ID"}
@@ -631,6 +678,7 @@ function MapView() {
           style={{ width: '100%', height: '100%' }}
         >
           <MapZoomListener />
+          <MapFitter pods={filteredPods} searchTag={searchTag} />
           <MapPanner location={userLocation} isActive={navState.isActive} panTrigger={panTrigger} resetTrigger={resetTrigger} onPanComplete={() => setMapTypeId('roadmap')} />
 
           {fetchError && (
@@ -646,7 +694,7 @@ function MapView() {
           )}
 
           {userLocation && (
-            <AdvancedMarker position={{ lat: userLocation[0], lng: userLocation[1] }}>
+            <AdvancedMarker position={{ lat: userLocation[0], lng: userLocation[1] }} gmpClickable={false}>
               {navState.isActive ? <NavArrowIcon /> : <UserIcon />}
             </AdvancedMarker>
           )}
@@ -667,6 +715,7 @@ function MapView() {
               <AdvancedMarker 
                 key={pod.id} 
                 position={{ lat: pod.latitude, lng: pod.longitude }}
+                gmpClickable={zoomLevel > 14}
                 draggable={!!user}
                 onDragStart={() => setIsDragging(true)}
                 onDragEnd={(e) => {
@@ -675,17 +724,17 @@ function MapView() {
                     handlePodDragEnd(pod.id, e.latLng.lat(), e.latLng.lng());
                   }
                 }}
-                onClick={() => {
+                onClick={zoomLevel > 14 ? () => {
                   if (isDragging) return;
                   if (searchTag) {
                     navigate(`/pod/${pod.id}?highlightTag=${searchTag}`);
                   } else {
                     navigate(`/pod/${pod.id}`);
                   }
-                }}
+                } : undefined}
               >
                 <div 
-                  className="relative flex flex-col items-center group cursor-pointer z-10"
+                  className={`relative flex flex-col items-center group z-10 ${zoomLevel > 14 ? 'cursor-pointer' : 'pointer-events-none'}`}
                   style={{ touchAction: 'none', WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
                 >
                   <div className="absolute bottom-full mb-1 bg-stone-900/90 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-xl border border-stone-700 whitespace-nowrap text-sm font-bold text-white pointer-events-none hidden group-hover:block z-[100]">
@@ -722,9 +771,45 @@ function MapView() {
               </div>
             </AdvancedMarker>
           )}
-        </Map>
+        </GoogleMap>
       </APIProvider>
       
+      {showWelcomeTip && (
+        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-white rounded-[2rem] p-8 shadow-2xl max-w-sm w-full border border-stone-200 relative overflow-hidden"
+          >
+            <div className="absolute top-0 left-0 w-full h-2 bg-emerald-600"></div>
+            <div className="bg-emerald-50 w-14 h-14 rounded-2xl flex items-center justify-center text-emerald-600 mb-6 shadow-inner">
+              <Info size={28} />
+            </div>
+            <h2 className="text-2xl font-black text-stone-900 mb-3 tracking-tight">Welcome!</h2>
+            <p className="text-stone-600 leading-relaxed mb-8 font-medium">
+              Hi! Quick tip: click near a pod and the map will zoom to block level. If you want to add or edit a cart please sign up for an account. All that stuff is under the hamburger.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => setShowWelcomeTip(false)}
+                className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-200 active:scale-[0.98]"
+              >
+                Close
+              </button>
+              <button 
+                onClick={() => {
+                  localStorage.setItem('hideWelcomeTip', 'true');
+                  setShowWelcomeTip(false);
+                }}
+                className="w-full bg-stone-100 text-stone-500 py-4 rounded-2xl font-bold hover:bg-stone-200 transition-all active:scale-[0.98] text-sm"
+              >
+                Do not show again
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       <div className="absolute bottom-8 right-8 z-[1000] flex flex-col gap-4 items-end">
         {/* Navigation Active Overlay */}
         {navState.isActive && navState.points[navState.currentIndex] && (
@@ -1024,6 +1109,16 @@ function PodPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [nextSlide, prevSlide]);
 
+  useEffect(() => {
+    const handler = (e: any) => {
+      if (e.detail.podId === id) {
+        setShowDeleteConfirm(true);
+      }
+    };
+    window.addEventListener('request-delete-pod', handler);
+    return () => window.removeEventListener('request-delete-pod', handler);
+  }, [id]);
+
   if (loading) return <div className="p-8 text-center">Loading pod details...</div>;
   if (!pod) return <div className="p-8 text-center">Pod not found</div>;
 
@@ -1290,9 +1385,6 @@ function PodPage() {
 
       <div className="flex items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4 min-w-0">
-          <button onClick={() => navigate('/')} className="p-2 hover:bg-stone-200 rounded-full transition-colors flex-shrink-0">
-            <ChevronLeft size={24} />
-          </button>
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-stone-900 truncate">{pod.name}</h1>
             <p className="text-stone-500 font-medium truncate">
@@ -1327,11 +1419,6 @@ function PodPage() {
               </button>
             </div>
           )}
-          <HamburgerMenu 
-            isPodPage={false} 
-            podId={pod.id} 
-            onDelete={() => setShowDeleteConfirm(true)} 
-          />
         </div>
       </div>
 
@@ -1368,7 +1455,7 @@ function PodPage() {
                         <div className="absolute bottom-2 left-2 flex flex-wrap gap-1">
                           {tags.slice(0, 3).map((t, i) => (
                             <span key={i} className="bg-black/60 backdrop-blur-sm text-white px-2 py-0.5 rounded text-[10px] font-mono font-bold border border-white/20">
-                              {typeof t === 'string' ? t.substring(0, 5).toUpperCase() : (t.tag || t.name?.substring(0, 5).toUpperCase())}
+                              {typeof t === 'string' ? t.toUpperCase() : (t.name || t.tag).toUpperCase()}
                             </span>
                           ))}
                         </div>
@@ -2685,6 +2772,16 @@ function PodMapPage() {
     }
   };
 
+  useEffect(() => {
+    const handler = (e: any) => {
+      if (e.detail.podId === id) {
+        setShowDeleteConfirm(true);
+      }
+    };
+    window.addEventListener('request-delete-pod', handler);
+    return () => window.removeEventListener('request-delete-pod', handler);
+  }, [id]);
+
   if (loading) return <div className="p-8 text-center">Loading map...</div>;
   if (!pod) return <div className="p-8 text-center">Pod not found</div>;
 
@@ -2695,21 +2792,9 @@ function PodMapPage() {
     <div className="absolute inset-0 flex flex-col">
       <div className="bg-white/90 backdrop-blur-md border-b border-stone-200 px-4 py-3 flex items-center justify-between z-10 shadow-sm">
         <div className="flex items-center gap-4">
-          <button onClick={() => {
-            navigate(`/pod/${id}`);
-          }} className="p-2 hover:bg-stone-200 rounded-full transition-colors">
-            <ChevronLeft size={24} />
-          </button>
           <div>
             <h1 className="text-xl font-bold text-stone-900 leading-tight">{pod.name}</h1>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <HamburgerMenu 
-            isPodPage={false} 
-            podId={pod.id} 
-            onDelete={() => setShowDeleteConfirm(true)} 
-          />
         </div>
       </div>
 
@@ -2742,7 +2827,7 @@ function PodMapPage() {
 
       <div className="flex-1 relative">
         <APIProvider apiKey={getEnv('VITE_GOOGLE_MAPS_API_KEY') || ''}>
-          <Map
+          <GoogleMap
             defaultZoom={19}
             defaultCenter={{ lat: pod.latitude, lng: pod.longitude }}
             mapId={getEnv('VITE_GOOGLE_MAPS_MAP_ID') || "DEMO_MAP_ID"}
@@ -2752,19 +2837,43 @@ function PodMapPage() {
             mapTypeId="roadmap"
             style={{ width: '100%', height: '100%' }}
           >
-            {placedCarts.map((cart) => {
-              let hasHighlightTag = false;
-              if (highlightTag) {
+            {(() => {
+              const tagToNameMap = new Map<string, string>();
+              carts.forEach(c => {
                 try {
-                  const tags = typeof cart.tags === 'string' ? JSON.parse(cart.tags || '[]') : (Array.isArray(cart.tags) ? cart.tags : []);
-                  hasHighlightTag = Array.isArray(tags) && tags.some(t => {
-                    if (typeof t === 'string') return t === highlightTag;
-                    if (typeof t === 'object' && t !== null) return t.tag === highlightTag || t.name === highlightTag;
-                    return false;
-                  });
+                  const tags = typeof c.tags === 'string' ? JSON.parse(c.tags || '[]') : (Array.isArray(c.tags) ? c.tags : []);
+                  if (Array.isArray(tags)) {
+                    tags.forEach(t => {
+                      if (typeof t === 'object' && t !== null && t.tag && t.name) {
+                        tagToNameMap.set(t.tag.toUpperCase(), t.name.toUpperCase());
+                      }
+                    });
+                  }
                 } catch(e) {}
-              }
-              const isHighlighted = cart.id === highlightId || hasHighlightTag || cart.id === selectedCartId;
+              });
+              
+              return placedCarts.map((cart) => {
+                let hasHighlightTag = false;
+                if (highlightTag) {
+                  try {
+                    const tags = typeof cart.tags === 'string' ? JSON.parse(cart.tags || '[]') : (Array.isArray(cart.tags) ? cart.tags : []);
+                    const search = highlightTag.toUpperCase();
+                    hasHighlightTag = Array.isArray(tags) && tags.some(t => {
+                      if (typeof t === 'string') {
+                        const upper = t.toUpperCase();
+                        const fullName = tagToNameMap.get(upper) || upper;
+                        return fullName === search || upper === search;
+                      }
+                      if (typeof t === 'object' && t !== null) {
+                        const nameMatch = t.name && t.name.toUpperCase() === search;
+                        const tagMatch = t.tag && t.tag.toUpperCase() === search;
+                        return nameMatch || tagMatch;
+                      }
+                      return false;
+                    });
+                  } catch(e) {}
+                }
+                const isHighlighted = cart.id === highlightId || hasHighlightTag || cart.id === selectedCartId;
               const isOpen = isCartOpen(cart.openTime, cart.closeTime);
               const pinColor = isHighlighted ? 'bg-red-600' : 'bg-violet-600';
               let ringClass = isHighlighted ? 'ring-4 ring-red-600/50 scale-110' : '';
@@ -2819,8 +2928,8 @@ function PodMapPage() {
                   </div>
                 </AdvancedMarker>
               );
-            })}
-          </Map>
+            })})()}
+          </GoogleMap>
           <CenterPodButton pod={pod} setPod={setPod} />
         </APIProvider>
 
@@ -3227,7 +3336,7 @@ function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPage?: boo
     <div className="relative pointer-events-auto">
       <button 
         onClick={() => setMenuOpen(!menuOpen)}
-        className={`p-2 rounded-xl shadow-lg border transition-colors ${isPodPage ? 'bg-white/20 hover:bg-white/30 backdrop-blur-md text-white border-white/10' : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'}`}
+        className="p-2 rounded-xl shadow-lg border bg-white border-stone-200 text-stone-700 hover:bg-stone-50 transition-colors"
       >
         {menuOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
@@ -3321,7 +3430,11 @@ function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPage?: boo
                 </button>
                 <button 
                   onClick={() => {
-                    onDelete?.();
+                    if (onDelete) {
+                      onDelete();
+                    } else {
+                      window.dispatchEvent(new CustomEvent('request-delete-pod', { detail: { podId } }));
+                    }
                     setMenuOpen(false);
                   }}
                   className="w-full px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2 text-left"
@@ -3349,11 +3462,12 @@ function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPage?: boo
 }
 
 function Header() {
+  const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const isHome = location.pathname === '/';
-  const isPodMap = location.pathname.match(/^\/pod\/[^/]+\/map$/);
-  const isPodPage = location.pathname.match(/^\/pod\/[^/]+$/) && location.pathname !== '/pod/new';
+  const podIdMatch = location.pathname.match(/^\/pod\/([^/]+)/);
+  const podId = podIdMatch && podIdMatch[1] !== 'new' ? podIdMatch[1] : undefined;
   
   const [carts, setCarts] = useState<Cart[]>([]);
   
@@ -3368,15 +3482,42 @@ function Header() {
 
   const availableTags = useMemo(() => {
     const tagsSet = new Set<string>();
+    const tagToNameMap = new Map<string, string>();
+
+    // First pass: build mapping of short tag to full name
     carts.forEach(c => {
       try {
         const tags = typeof c.tags === 'string' ? JSON.parse(c.tags || '[]') : (Array.isArray(c.tags) ? c.tags : []);
         if (Array.isArray(tags)) {
           tags.forEach(t => {
-            if (typeof t === 'string') tagsSet.add(t);
-            else if (typeof t === 'object' && t !== null) {
-              if (t.tag) tagsSet.add(t.tag);
-              if (t.name) tagsSet.add(t.name);
+            if (typeof t === 'object' && t !== null && t.tag && t.name) {
+              const shortTag = t.tag.toUpperCase();
+              const fullName = t.name;
+              if (!tagToNameMap.has(shortTag) || fullName.length > tagToNameMap.get(shortTag)!.length) {
+                tagToNameMap.set(shortTag, fullName);
+              }
+            }
+          });
+        }
+      } catch(e) {}
+    });
+
+    // Second pass: collect all tags, using full name if available
+    carts.forEach(c => {
+      try {
+        const tags = typeof c.tags === 'string' ? JSON.parse(c.tags || '[]') : (Array.isArray(c.tags) ? c.tags : []);
+        if (Array.isArray(tags)) {
+          tags.forEach(t => {
+            if (typeof t === 'string') {
+              const upper = t.toUpperCase();
+              tagsSet.add(tagToNameMap.get(upper) || t);
+            } else if (typeof t === 'object' && t !== null) {
+              if (t.name) {
+                tagsSet.add(t.name);
+              } else if (t.tag) {
+                const upper = t.tag.toUpperCase();
+                tagsSet.add(tagToNameMap.get(upper) || t.tag);
+              }
             }
           });
         }
@@ -3395,18 +3536,29 @@ function Header() {
     setSearchParams(searchParams);
   };
 
-  if (isPodPage || isPodMap) return null;
+  // if (isPodPage || isPodMap) return null;
 
   return (
-    <header className={`${isHome ? 'absolute top-0 left-0 right-0 bg-transparent border-none pointer-events-none' : 'bg-white/80 backdrop-blur-md border-b border-stone-200 sticky top-0'} z-[2000] px-4 py-3 flex-shrink-0`}>
+    <header className="bg-white/80 backdrop-blur-md border-b border-stone-200 sticky top-0 z-[2000] px-4 py-3 flex-shrink-0">
       <div className="max-w-7xl mx-auto flex items-center justify-between pointer-events-auto">
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="bg-emerald-600 p-2 rounded-xl group-hover:rotate-12 transition-transform shadow-lg">
-            <Utensils className="text-white" size={20} />
-          </div>
-          <span className="text-lg sm:text-xl font-black tracking-tighter text-stone-900 drop-shadow-md hidden sm:inline">FIND A FOODCART <span className="text-[10px] sm:text-xs text-emerald-600">v2</span></span>
-          <span className="text-lg font-black tracking-tighter text-stone-900 drop-shadow-md sm:hidden">FAF <span className="text-[10px] text-emerald-600">v2</span></span>
-        </Link>
+        <div className="flex items-center gap-4">
+          {location.pathname !== '/' && (
+            <button onClick={() => navigate(-1)} className="p-2 hover:bg-stone-100 rounded-full transition-colors text-stone-600">
+              <ChevronLeft size={24} />
+            </button>
+          )}
+          <Link 
+            to="/" 
+            className="flex items-center gap-2 group"
+            onClick={() => window.dispatchEvent(new Event('reset-map'))}
+          >
+            <div className="bg-emerald-600 p-2 rounded-xl group-hover:rotate-12 transition-transform shadow-lg">
+              <Utensils className="text-white" size={20} />
+            </div>
+            <span className="text-lg sm:text-xl font-black tracking-tighter text-stone-900 drop-shadow-md hidden sm:inline">FIND A FOODCART <span className="text-[10px] sm:text-xs text-emerald-600">v2</span></span>
+            <span className="text-lg font-black tracking-tighter text-stone-900 drop-shadow-md sm:hidden">FAF <span className="text-[10px] text-emerald-600">v2</span></span>
+          </Link>
+        </div>
 
         {isHome && (
           <div className="mx-4 flex-1 max-w-xs">
@@ -3444,7 +3596,7 @@ function Header() {
           </div>
         )}
 
-        <HamburgerMenu />
+        <HamburgerMenu podId={podId} />
       </div>
     </header>
   );
@@ -3743,7 +3895,7 @@ function FavoritesPage() {
                         <div className="absolute bottom-2 left-2 flex flex-wrap gap-1">
                           {tags.slice(0, 3).map((t, i) => (
                             <span key={i} className="bg-black/60 backdrop-blur-sm text-white px-2 py-0.5 rounded text-[10px] font-mono font-bold border border-white/20">
-                              {typeof t === 'string' ? t.substring(0, 5).toUpperCase() : (t.tag || t.name?.substring(0, 5).toUpperCase())}
+                              {typeof t === 'string' ? t.toUpperCase() : (t.name || t.tag).toUpperCase()}
                             </span>
                           ))}
                         </div>
