@@ -766,7 +766,10 @@ function MapView() {
                 }}
                 onClick={() => {
                   if (isDragging) return;
-                  if (searchTag) {
+                  const podCarts = carts.filter(c => c.podId === pod.id);
+                  if (podCarts.length === 1) {
+                    navigate(`/pod/${pod.id}?cart=${podCarts[0].id}`);
+                  } else if (searchTag) {
                     navigate(`/pod/${pod.id}?highlightTag=${searchTag}`);
                   } else {
                     navigate(`/pod/${pod.id}`);
@@ -940,7 +943,14 @@ function MapView() {
                 {showSteps ? 'Hide Steps' : 'Steps'}
               </button>
               <button 
-                onClick={() => navigate(`/pod/${navTarget.id}`)}
+                onClick={() => {
+                  const podCarts = carts.filter(c => c.podId === navTarget.id);
+                  if (podCarts.length === 1) {
+                    navigate(`/pod/${navTarget.id}?cart=${podCarts[0].id}`);
+                  } else {
+                    navigate(`/pod/${navTarget.id}`);
+                  }
+                }}
                 className="flex-1 bg-stone-900 text-white py-3 rounded-xl font-bold hover:bg-stone-800 transition-colors flex items-center justify-center gap-2"
               >
                 <Info size={18} />
@@ -1156,7 +1166,8 @@ function PodPage() {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen bg-yellow-50"
+      className="min-h-screen"
+      style={{ backgroundColor: '#627D8C' }}
     >
       <div className="max-w-7xl mx-auto p-4 pb-24">
       <AnimatePresence>
@@ -1448,7 +1459,7 @@ function PodPage() {
       <div className="flex items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4 min-w-0">
           <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-stone-900 truncate">{pod.name}</h1>
+            <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black bg-gradient-to-br from-slate-200 via-slate-400 to-slate-200 bg-clip-text text-transparent drop-shadow-lg truncate">{pod.name}</h1>
             <p className="text-stone-500 font-medium truncate">
               {pod.address}
             </p>
@@ -1694,6 +1705,7 @@ function CartPage() {
   const navigate = useNavigate();
   const [cart, setCart] = useState<Cart | null>(null);
   const [pod, setPod] = useState<Pod | null>(null);
+  const [podCarts, setPodCarts] = useState<Cart[]>([]);
   const [loading, setLoading] = useState(true);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [isFavoriting, setIsFavoriting] = useState(false);
@@ -1708,6 +1720,10 @@ function CartPage() {
         const podRes = await fetch(`/api/pods/${data.podId}`);
         const podData = await podRes.json();
         setPod(podData);
+
+        const cartsRes = await fetch(`/api/pods/${data.podId}/carts`);
+        const cartsData = await cartsRes.json();
+        setPodCarts(cartsData);
       } catch (err) {
         console.error(err);
       } finally {
@@ -1864,7 +1880,22 @@ function CartPage() {
       </AnimatePresence>
 
       <div className="flex items-center justify-between mb-6">
-        <button onClick={() => navigate(-1)} className="p-2 hover:bg-stone-200 rounded-full transition-colors">
+        <button onClick={() => {
+          console.log("DEBUG: Back button clicked. cart:", cart, "podCarts:", podCarts);
+          if (cart?.podId) {
+            console.log("DEBUG: podCarts.length:", podCarts.length);
+            if (podCarts.length <= 1) {
+              console.log("DEBUG: Navigating to map:", `/pod/${cart.podId}/map`);
+              navigate(`/pod/${cart.podId}/map`);
+            } else {
+              console.log("DEBUG: Navigating back");
+              navigate(-1);
+            }
+          } else {
+            console.log("DEBUG: No cart.podId, navigating back");
+            navigate(-1);
+          }
+        }} className="p-2 hover:bg-stone-200 rounded-full transition-colors">
           <ChevronLeft size={24} />
         </button>
         <div className="flex gap-2">
@@ -2250,6 +2281,7 @@ function CartForm() {
     websiteUrl: '',
     rating: 0
   });
+  const [podCarts, setPodCarts] = useState<Cart[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [foodItems, setFoodItems] = useState<{name: string, tag: string}[]>([]);
@@ -2281,6 +2313,14 @@ function CartForm() {
         }
       });
   }, []);
+
+  useEffect(() => {
+    if (podId) {
+      fetch(`/api/pods/${podId}/carts`)
+        .then(res => res.json())
+        .then(data => setPodCarts(Array.isArray(data) ? data : []));
+    }
+  }, [podId]);
 
   useEffect(() => {
     if (isEdit) {
@@ -2381,7 +2421,13 @@ function CartForm() {
   return (
     <div className="max-w-2xl mx-auto p-6">
       <div className="flex items-center gap-4 mb-8">
-        <button onClick={() => navigate(-1)} className="p-2 hover:bg-stone-200 rounded-full">
+        <button onClick={() => {
+          if (podCarts.length <= 1 && podId) {
+            navigate(`/pod/${podId}/map`);
+          } else {
+            navigate(-1);
+          }
+        }} className="p-2 hover:bg-stone-200 rounded-full">
           <ChevronLeft size={24} />
         </button>
         <h1 className="text-3xl font-bold">{isEdit ? 'Edit Cart' : 'Add New Cart'}</h1>
