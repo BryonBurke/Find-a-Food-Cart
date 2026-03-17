@@ -16,6 +16,7 @@ import Login from './Login';
 import { signOut } from 'firebase/auth';
 import { auth } from './firebase';
 import { getEnv } from './env';
+import { GoogleGenAI, Type } from "@google/genai";
 
 // Custom Food Cart Icon
 const CartIcon = () => (
@@ -260,6 +261,33 @@ function MapZoomListener() {
   return null;
 }
 
+const checkContentSafety = async (text: string) => {
+  if (!text || text.trim() === '') return { isHateful: false, reason: '' };
+  try {
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Analyze the following text for hate speech, racism, anti-LGBTQ+ sentiment, or other highly offensive content. Text: "${text}"`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            isHateful: { type: Type.BOOLEAN, description: "True if the text contains hate speech, racism, anti-LGBTQ+ sentiment, or highly offensive content." },
+            reason: { type: Type.STRING, description: "Explanation of why it was flagged, or empty string if safe." }
+          },
+          required: ["isHateful", "reason"]
+        }
+      }
+    });
+    const result = JSON.parse(response.text || '{"isHateful": false, "reason": ""}');
+    return result;
+  } catch (err) {
+    console.error("Safety check failed:", err);
+    return { isHateful: false, reason: '' };
+  }
+};
+
 function isCartOpen(openTime?: string, closeTime?: string): boolean {
   if (!openTime || !closeTime || typeof openTime !== 'string' || typeof closeTime !== 'string') return false;
   const now = new Date();
@@ -340,9 +368,12 @@ function MapFitter({ pods, searchTag }: { pods: Pod[], searchTag: string }) {
   return null;
 }
 
+import { useTutorial } from './TutorialContext';
+
 function MapView() {
   const { user } = useAuth();
   const { editMode } = useEditMode();
+  const { nextStep } = useTutorial();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [pods, setPods] = useState<Pod[]>([]);
@@ -681,6 +712,7 @@ function MapView() {
           onClick={(e) => {
             if (isAddingPod && e.detail.latLng) {
               setTempMarker([e.detail.latLng.lat, e.detail.latLng.lng]);
+              nextStep('CLICK_MAP', 'CLICK_POD_PIN');
             } else if (e.detail.latLng && e.map) {
               const currentZoom = e.map.getZoom();
               if (currentZoom && currentZoom <= 14) {
@@ -1000,6 +1032,12 @@ function MapView() {
           Click on the map to drop a pin
         </div>
       )}
+
+      {isAddingPod && tempMarker && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 backdrop-blur-md px-6 py-3 rounded-full shadow-xl border border-emerald-200 text-emerald-800 font-bold animate-bounce">
+          Click the new pin to create the pod
+        </div>
+      )}
     </div>
   );
 }
@@ -1089,8 +1127,13 @@ function PodPage() {
   const menuGallery = useMemo(() => {
     if (!selectedCartForMenu) return [];
     try {
-      const gallery = typeof selectedCartForMenu.menuGallery === 'string' ? JSON.parse(selectedCartForMenu.menuGallery) : (Array.isArray(selectedCartForMenu.menuGallery) ? selectedCartForMenu.menuGallery : []);
-      return Array.isArray(gallery) ? gallery : [];
+      if (selectedCartForMenu.menuGallery && typeof selectedCartForMenu.menuGallery === 'string' && selectedCartForMenu.menuGallery.trim() !== '') {
+        const gallery = JSON.parse(selectedCartForMenu.menuGallery);
+        return Array.isArray(gallery) ? gallery : [];
+      } else if (Array.isArray(selectedCartForMenu.menuGallery)) {
+        return selectedCartForMenu.menuGallery;
+      }
+      return [];
     } catch (e) {
       return [];
     }
@@ -1382,74 +1425,82 @@ function PodPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black z-[5000] flex items-center justify-center"
+            className="fixed inset-0 pt-[72px] p-4 sm:p-6 pb-8 bg-black/60 backdrop-blur-sm z-[1500] flex items-center justify-center"
             onClick={() => setSlideshowIndex(null)}
           >
-            <button 
-              className="absolute top-4 right-4 text-white p-2 hover:bg-white/20 rounded-full transition-colors z-[5001]"
-              onClick={() => setSlideshowIndex(null)}
-            >
-              <X size={32} />
-            </button>
-            <button 
-              className="absolute left-4 text-white p-4 hover:bg-white/20 rounded-full transition-colors z-[5001]"
-              onClick={(e) => { e.stopPropagation(); setSlideshowIndex((prev) => (prev! - 1 + carts.length) % carts.length); }}
-            >
-              <ChevronLeft size={48} />
-            </button>
-            <button 
-              className="absolute right-4 text-white p-4 hover:bg-white/20 rounded-full transition-colors z-[5001]"
-              onClick={(e) => { e.stopPropagation(); setSlideshowIndex((prev) => (prev! + 1) % carts.length); }}
-            >
-              <ChevronRight size={48} />
-            </button>
-            
-            <img 
-              src={carts[slideshowIndex].imageUrl || `https://picsum.photos/seed/cart-${carts[slideshowIndex].id}/800/600`}
-              alt={carts[slideshowIndex].name}
-              className="w-full h-full object-contain"
-              referrerPolicy="no-referrer"
-            />
-            
-            <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black/90 to-transparent text-white flex flex-col items-center z-[5001]">
-              <h2 className="text-2xl sm:text-4xl font-bold">{carts[slideshowIndex].name}</h2>
-              <p className="text-stone-300 mt-1 text-sm sm:text-lg max-w-2xl text-center">{carts[slideshowIndex].description}</p>
+            <div className="bg-black rounded-3xl w-full h-full relative overflow-hidden shadow-2xl border border-white/10" onClick={(e) => e.stopPropagation()}>
+              <button 
+                className="absolute top-4 right-4 text-white p-2 hover:bg-white/20 rounded-full transition-colors z-[5001]"
+                onClick={() => setSlideshowIndex(null)}
+              >
+                <X size={32} />
+              </button>
+              {carts.length > 1 && (
+                <>
+                  <button 
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-white p-4 hover:bg-white/20 rounded-full transition-colors z-[5001]"
+                    onClick={(e) => { e.stopPropagation(); setSlideshowIndex((prev) => (prev! - 1 + carts.length) % carts.length); }}
+                  >
+                    <ChevronLeft size={48} />
+                  </button>
+                  <button 
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white p-4 hover:bg-white/20 rounded-full transition-colors z-[5001]"
+                    onClick={(e) => { e.stopPropagation(); setSlideshowIndex((prev) => (prev! + 1) % carts.length); }}
+                  >
+                    <ChevronRight size={48} />
+                  </button>
+                </>
+              )}
               
-              <div className="flex gap-3 mt-4 justify-center">
-                <button 
-                  onClick={(e) => { e.stopPropagation(); toggleFavorite(carts[slideshowIndex].id); }}
-                  className={`px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors text-sm sm:text-base ${localFavorites.includes(carts[slideshowIndex].id) ? 'bg-rose-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}
-                >
-                  <Heart size={18} fill={localFavorites.includes(carts[slideshowIndex].id) ? "currentColor" : "none"} />
-                </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setSelectedCartForMenu(carts[slideshowIndex]); setMenuSlideshowIndex(0); setSlideshowIndex(null); }}
-                  className="bg-white text-black px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-stone-200 transition-colors text-sm sm:text-base"
-                >
-                  <FileText size={18} /> Menu
-                </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); navigate(`/pod/${carts[slideshowIndex].podId}/map?highlight=${carts[slideshowIndex].id}`); setSlideshowIndex(null); }}
-                  className="bg-emerald-600 text-white px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-500 transition-colors text-sm sm:text-base"
-                >
-                  <MapPin size={18} /> Map
-                </button>
-                {!!user && !!user.uid && !user.isAnonymous && editMode && (
-                  <>
+              <img 
+                src={carts[slideshowIndex].imageUrl || `https://picsum.photos/seed/cart-${carts[slideshowIndex].id}/800/600`}
+                alt={carts[slideshowIndex].name}
+                className="w-full h-full object-contain"
+                referrerPolicy="no-referrer"
+              />
+              
+              <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 bg-gradient-to-t from-black/90 via-black/60 to-transparent text-white flex flex-col items-center z-[5001]">
+                <h2 className="text-2xl sm:text-4xl font-bold">{carts[slideshowIndex].name}</h2>
+                <p className="text-stone-300 mt-1 text-sm sm:text-lg max-w-2xl text-center">{carts[slideshowIndex].description}</p>
+                
+                <div className="flex flex-wrap gap-3 mt-4 justify-center">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); toggleFavorite(carts[slideshowIndex].id); }}
+                    className={`px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors text-sm sm:text-base ${localFavorites.includes(carts[slideshowIndex].id) ? 'bg-rose-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}
+                  >
+                    <Heart size={18} fill={localFavorites.includes(carts[slideshowIndex].id) ? "currentColor" : "none"} />
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setSelectedCartForMenu(carts[slideshowIndex]); setMenuSlideshowIndex(0); setSlideshowIndex(null); }}
+                    className="bg-white text-black px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-stone-200 transition-colors text-sm sm:text-base"
+                  >
+                    <FileText size={18} /> Menu
+                  </button>
+                  {carts.length > 1 && (
                     <button 
-                      onClick={(e) => { e.stopPropagation(); navigate(`/cart/${carts[slideshowIndex].id}/edit`); setSlideshowIndex(null); }}
-                      className="bg-blue-600 text-white px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-500 transition-colors text-sm sm:text-base"
+                      onClick={(e) => { e.stopPropagation(); navigate(`/pod/${carts[slideshowIndex].podId}/map?highlight=${carts[slideshowIndex].id}`); setSlideshowIndex(null); }}
+                      className="bg-emerald-600 text-white px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-500 transition-colors text-sm sm:text-base"
                     >
-                      <Edit2 size={18} /> Edit
+                      <MapPin size={18} /> Pod Map
                     </button>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); setCartToDelete(carts[slideshowIndex]); }}
-                      className="bg-red-600 text-white px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-500 transition-colors text-sm sm:text-base"
-                    >
-                      <Trash2 size={18} /> Delete
-                    </button>
-                  </>
-                )}
+                  )}
+                  {!!user && !!user.uid && !user.isAnonymous && editMode && (
+                    <>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); navigate(`/cart/${carts[slideshowIndex].id}/edit`); setSlideshowIndex(null); }}
+                        className="bg-blue-600 text-white px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-500 transition-colors text-sm sm:text-base"
+                      >
+                        <Edit2 size={18} /> Edit
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setCartToDelete(carts[slideshowIndex]); }}
+                        className="bg-red-600 text-white px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-500 transition-colors text-sm sm:text-base"
+                      >
+                        <Trash2 size={18} /> Delete
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </motion.div>
@@ -1571,15 +1622,17 @@ function PodPage() {
                     >
                       <FileText size={14} /> Menu
                     </button>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/pod/${pod.id}/map?highlight=${cart.id}`);
-                      }}
-                      className="text-emerald-600 hover:text-emerald-700 font-bold text-sm flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                      <MapPin size={14} /> Map
-                    </button>
+                    {carts.length > 1 && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/pod/${pod.id}/map?highlight=${cart.id}`);
+                        }}
+                        className="text-emerald-600 hover:text-emerald-700 font-bold text-sm flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        <MapPin size={14} /> Pod Map
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1723,7 +1776,7 @@ function CartPage() {
 
         const cartsRes = await fetch(`/api/pods/${data.podId}/carts`);
         const cartsData = await cartsRes.json();
-        setPodCarts(cartsData);
+        setPodCarts(Array.isArray(cartsData) ? cartsData : []);
       } catch (err) {
         console.error(err);
       } finally {
@@ -1744,64 +1797,6 @@ function CartPage() {
   }, [cart, navigate]);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
-  const deleteCart = async () => {
-    if (!cart || !user) return;
-
-    try {
-      const token = await user.getIdToken();
-      const res = await fetch(`/api/carts/${cart.id}`, { 
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        navigate(`/pod/${cart.podId}`);
-      } else {
-        const error = await res.json();
-        alert(`Failed to delete cart: ${error.error || 'Unknown error'}`);
-        setShowDeleteConfirm(false);
-      }
-    } catch (err) {
-      console.error("Delete cart error:", err);
-      alert("A network error occurred while trying to delete the cart.");
-      setShowDeleteConfirm(false);
-    }
-  };
-
-  if (loading) return <div className="p-8 text-center">Loading cart details...</div>;
-  if (!cart) return <div className="p-8 text-center">Cart not found</div>;
-
-  let gallery: string[] = [];
-  let menuGallery: string[] = [];
-  try {
-    gallery = typeof cart.gallery === 'string' ? JSON.parse(cart.gallery) : (Array.isArray(cart.gallery) ? cart.gallery : []);
-    if (!Array.isArray(gallery)) gallery = [];
-  } catch (e) {
-    console.error("Failed to parse gallery JSON", e);
-    gallery = [];
-  }
-  try {
-    menuGallery = typeof cart.menuGallery === 'string' ? JSON.parse(cart.menuGallery) : (Array.isArray(cart.menuGallery) ? cart.menuGallery : []);
-    if (!Array.isArray(menuGallery)) menuGallery = [];
-  } catch (e) {
-    console.error("Failed to parse menuGallery JSON", e);
-    menuGallery = [];
-  }
-
-  const canEdit = !!user && !user.isAnonymous && (
-    !cart.ownerEmail || 
-    user.email?.toLowerCase() === cart.ownerEmail || 
-    user.email?.toLowerCase() === 'bryonparis@gmail.com'
-  );
-
-  console.log("CartPage debug:", { 
-    user: !!user, 
-    userEmail: user?.email, 
-    isAnonymous: user?.isAnonymous, 
-    canEdit, 
-    editMode 
-  });
-
   const [isFavorite, setIsFavorite] = useState(false);
 
   useEffect(() => {
@@ -1834,6 +1829,71 @@ function CartPage() {
       setIsFavorite(!newStatus);
     }
   };
+
+  const deleteCart = async () => {
+    if (!cart || !user) return;
+
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/carts/${cart.id}`, { 
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        navigate(`/pod/${cart.podId}`);
+      } else {
+        const error = await res.json();
+        alert(`Failed to delete cart: ${error.error || 'Unknown error'}`);
+        setShowDeleteConfirm(false);
+      }
+    } catch (err) {
+      console.error("Delete cart error:", err);
+      alert("A network error occurred while trying to delete the cart.");
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  if (loading) return <div className="p-8 text-center">Loading cart details...</div>;
+  if (!cart || cart.error) return <div className="p-8 text-center">Cart not found</div>;
+
+  let gallery: string[] = [];
+  let menuGallery: string[] = [];
+  try {
+    if (cart.gallery && typeof cart.gallery === 'string' && cart.gallery.trim() !== '') {
+      gallery = JSON.parse(cart.gallery);
+    } else if (Array.isArray(cart.gallery)) {
+      gallery = cart.gallery;
+    }
+    if (!Array.isArray(gallery)) gallery = [];
+  } catch (e) {
+    console.error("Failed to parse gallery JSON", e);
+    gallery = [];
+  }
+  try {
+    if (cart.menuGallery && typeof cart.menuGallery === 'string' && cart.menuGallery.trim() !== '') {
+      menuGallery = JSON.parse(cart.menuGallery);
+    } else if (Array.isArray(cart.menuGallery)) {
+      menuGallery = cart.menuGallery;
+    }
+    if (!Array.isArray(menuGallery)) menuGallery = [];
+  } catch (e) {
+    console.error("Failed to parse menuGallery JSON", e);
+    menuGallery = [];
+  }
+
+  const canEdit = !!user && !user.isAnonymous && (
+    !cart.ownerEmail || 
+    user.email?.toLowerCase() === cart.ownerEmail || 
+    user.email?.toLowerCase() === 'bryonparis@gmail.com'
+  );
+
+  console.log("CartPage debug:", { 
+    user: !!user, 
+    userEmail: user?.email, 
+    isAnonymous: user?.isAnonymous, 
+    canEdit, 
+    editMode 
+  });
 
   return (
     <motion.div 
@@ -1959,6 +2019,23 @@ function CartPage() {
                 )}
               </div>
               <h1 className="text-5xl font-black text-white mb-2">{cart.name}</h1>
+              {(() => {
+                try {
+                  const tags = typeof cart.tags === 'string' ? JSON.parse(cart.tags || '[]') : (Array.isArray(cart.tags) ? cart.tags : []);
+                  if (Array.isArray(tags) && tags.length > 0) {
+                    return (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {tags.map((t: any, i: number) => (
+                          <span key={i} className="bg-white/20 backdrop-blur-sm text-white px-3 py-1 rounded-lg text-xs font-mono font-bold border border-white/10">
+                            {typeof t === 'string' ? t.toUpperCase() : (t.name || t.tag).toUpperCase()}
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  }
+                } catch (e) {}
+                return null;
+              })()}
               <div className="flex items-center gap-4 text-stone-200">
                 <div className="flex items-center gap-1 text-amber-400">
                   <Star size={20} fill="currentColor" />
@@ -1968,13 +2045,15 @@ function CartPage() {
             </div>
             {pod && (
               <div className="flex gap-2">
-                <button 
-                  onClick={() => navigate(`/pod/${pod.id}/map?highlight=${cart.id}`)}
-                  className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors font-medium border border-white/20 shadow-sm"
-                >
-                  <MapIcon size={18} />
-                  View on Map
-                </button>
+                {podCarts.length > 1 && (
+                  <button 
+                    onClick={() => navigate(`/pod/${pod.id}/map?highlight=${cart.id}`)}
+                    className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors font-medium border border-white/20 shadow-sm"
+                  >
+                    <MapIcon size={18} />
+                    Pod Map
+                  </button>
+                )}
                 <button 
                   onClick={() => navigate(`/?navTo=${pod.id}`)}
                   className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors font-medium border border-white/20 shadow-sm"
@@ -2148,6 +2227,13 @@ function PodForm() {
     setIsSubmitting(true);
     setErrorMsg(null);
     try {
+      const safety = await checkContentSafety(`${formData.name || ''} ${formData.description || ''} ${formData.address || ''}`);
+      if (safety.isHateful) {
+        setErrorMsg(`Content flagged for violating community guidelines: ${safety.reason}`);
+        setIsSubmitting(false);
+        return;
+      }
+
       const token = await user.getIdToken();
       const method = isEdit ? 'PUT' : 'POST';
       const url = isEdit ? `/api/pods/${id}` : '/api/pods';
@@ -2360,18 +2446,26 @@ function CartForm() {
     e.preventDefault();
     if (!user || isSubmitting) return;
     setIsSubmitting(true);
-    const token = await user.getIdToken();
-    
-    const payload = {
-      ...formData,
-      tags: JSON.stringify(foodItems),
-      podId: formData.podId
-    };
-
-    const method = isEdit ? 'PUT' : 'POST';
-    const url = isEdit ? `/api/carts/${id}` : '/api/carts';
     
     try {
+      const safety = await checkContentSafety(`${formData.name || ''} ${formData.description || ''} ${formData.cuisine || ''}`);
+      if (safety.isHateful) {
+        alert(`Content flagged for violating community guidelines: ${safety.reason}`);
+        setIsSubmitting(false);
+        return;
+      }
+
+      const token = await user.getIdToken();
+    
+      const payload = {
+        ...formData,
+        tags: JSON.stringify(foodItems),
+        podId: formData.podId
+      };
+
+      const method = isEdit ? 'PUT' : 'POST';
+      const url = isEdit ? `/api/carts/${id}` : '/api/carts';
+      
       const res = await fetch(url, {
         method,
         headers: { 
@@ -2728,6 +2822,36 @@ function CenterPodButton({ pod, setPod }: { pod: Pod, setPod: (p: Pod) => void }
   );
 }
 
+function MapBoundsHandler({ carts, pod }: { carts: Cart[], pod: Pod }) {
+  const map = useMap();
+  const core = useMapsLibrary('core');
+
+  useEffect(() => {
+    if (!map || !core || !carts || carts.length === 0) return;
+
+    const bounds = new core.LatLngBounds();
+    bounds.extend({ lat: pod.latitude, lng: pod.longitude });
+    
+    let hasPlacedCarts = false;
+    carts.forEach(cart => {
+      if (cart.latitude !== undefined && cart.latitude !== null && 
+          cart.longitude !== undefined && cart.longitude !== null) {
+        bounds.extend({ lat: cart.latitude, lng: cart.longitude });
+        hasPlacedCarts = true;
+      }
+    });
+
+    if (hasPlacedCarts) {
+      const timer = setTimeout(() => {
+        map.fitBounds(bounds, { top: 80, bottom: 80, left: 40, right: 40 });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [map, core, carts, pod]);
+
+  return null;
+}
+
 function PodMapPage() {
   const { user } = useAuth();
   const { editMode } = useEditMode();
@@ -2906,8 +3030,8 @@ function PodMapPage() {
   if (loading) return <div className="p-8 text-center">Loading map...</div>;
   if (!pod) return <div className="p-8 text-center">Pod not found</div>;
 
-  const placedCarts = carts.filter(c => c.latitude !== undefined && c.longitude !== undefined);
-  const unplacedCarts = carts.filter(c => c.latitude === undefined || c.longitude === undefined);
+  const placedCarts = carts.filter(c => c.latitude !== undefined && c.latitude !== null && c.longitude !== undefined && c.longitude !== null);
+  const unplacedCarts = carts.filter(c => c.latitude === undefined || c.latitude === null || c.longitude === undefined || c.longitude === null);
 
   return (
     <div className="absolute inset-0 flex flex-col">
@@ -2958,6 +3082,11 @@ function PodMapPage() {
             mapTypeId="roadmap"
             style={{ width: '100%', height: '100%' }}
           >
+            <MapBoundsHandler carts={carts} pod={pod} />
+            <AdvancedMarker position={{ lat: pod.latitude, lng: pod.longitude }} gmpClickable={false}>
+              <div className="w-4 h-4 bg-stone-400/50 rounded-full border-2 border-white/50 shadow-sm" title="Pod Center" />
+            </AdvancedMarker>
+
             {(() => {
               const tagToNameMap = new Map<string, string>();
               carts.forEach(c => {
@@ -3030,7 +3159,7 @@ function PodMapPage() {
                     className={`relative flex flex-col items-center group cursor-pointer ${isHighlighted || selectedCartId === cart.id ? 'z-50' : 'z-10'}`}
                     style={{ touchAction: 'none', WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
                   >
-                    <div className={`${pinColor} w-10 h-10 shadow-lg border-2 border-white text-white transition-all ${ringClass} ${selectedCartId === cart.id ? 'ring-4 ring-red-600 scale-110' : ''} group-hover:scale-110 pointer-events-none flex items-center justify-center`}>
+                    <div className={`${pinColor} w-12 h-12 shadow-lg border-2 border-white text-white transition-all ${ringClass} ${selectedCartId === cart.id ? 'ring-4 ring-red-600 scale-110' : ''} group-hover:scale-110 pointer-events-none flex items-center justify-center`}>
                       <span className="text-[10px] font-bold whitespace-nowrap pointer-events-none">
                         {(() => {
                           try {
@@ -3038,11 +3167,12 @@ function PodMapPage() {
                             if (Array.isArray(tags) && tags.length > 0) {
                               const first = tags[0];
                               const tagStr = typeof first === 'string' ? first : (first.tag || first.name || '');
-                              return tagStr.substring(0, 3);
+                              return tagStr.substring(0, 5);
                             }
                             return '';
                           } catch(e) {}
-                          return getShortName(cart.name);
+                          const short = getShortName(cart.name);
+                          return short.substring(0, 5);
                         })()}
                       </span>
                     </div>
@@ -3427,6 +3557,7 @@ function ModeratorPage() {
 function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPage?: boolean, podId?: string, onDelete?: () => void }) {
   const { user } = useAuth();
   const { editMode, setEditMode } = useEditMode();
+  const { startTutorial, nextStep } = useTutorial();
   const navigate = useNavigate();
   const location = useLocation();
   const isHome = location.pathname === '/';
@@ -3456,7 +3587,12 @@ function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPage?: boo
   return (
     <div className="relative pointer-events-auto">
       <button 
-        onClick={() => setMenuOpen(!menuOpen)}
+        onClick={() => {
+          setMenuOpen(!menuOpen);
+          if (!menuOpen) {
+            nextStep('OPEN_MENU', 'CLICK_ADD_POD');
+          }
+        }}
         className="p-2 rounded-xl shadow-lg border bg-white border-stone-200 text-stone-700 hover:bg-stone-50 transition-colors"
       >
         {menuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -3514,6 +3650,20 @@ function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPage?: boo
               </button>
             )}
 
+            {user && (
+              <button
+                onClick={() => {
+                  setEditMode(true);
+                  startTutorial();
+                  setMenuOpen(false);
+                  navigate('/');
+                }}
+                className="w-full px-4 py-3 text-sm font-semibold text-stone-700 hover:bg-stone-100 transition-colors flex items-center text-left"
+              >
+                Make a Cart Tutorial
+              </button>
+            )}
+
             {podId && (
               <div className="border-t border-stone-100 mt-1 pt-1">
                 <button 
@@ -3523,7 +3673,7 @@ function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPage?: boo
                   }}
                   className="w-full px-4 py-3 text-sm font-semibold text-stone-700 hover:bg-stone-100 transition-colors flex items-center gap-2 text-left"
                 >
-                  <MapIcon size={16} /> MAP
+                  <MapIcon size={16} /> POD MAP
                 </button>
                 <button 
                   onClick={() => {
@@ -3789,8 +3939,13 @@ function FavoritesPage() {
   const menuGallery = useMemo(() => {
     if (!selectedCartForMenu) return [];
     try {
-      const gallery = typeof selectedCartForMenu.menuGallery === 'string' ? JSON.parse(selectedCartForMenu.menuGallery) : (Array.isArray(selectedCartForMenu.menuGallery) ? selectedCartForMenu.menuGallery : []);
-      return Array.isArray(gallery) ? gallery : [];
+      if (selectedCartForMenu.menuGallery && typeof selectedCartForMenu.menuGallery === 'string' && selectedCartForMenu.menuGallery.trim() !== '') {
+        const gallery = JSON.parse(selectedCartForMenu.menuGallery);
+        return Array.isArray(gallery) ? gallery : [];
+      } else if (Array.isArray(selectedCartForMenu.menuGallery)) {
+        return selectedCartForMenu.menuGallery;
+      }
+      return [];
     } catch (e) {
       return [];
     }
@@ -3886,38 +4041,24 @@ function FavoritesPage() {
                 </button>
               </div>
               <div className="p-6 overflow-y-auto flex-1">
-                {(() => {
-                  let menuGallery: string[] = [];
-                  try {
-                    menuGallery = typeof selectedCartForMenu.menuGallery === 'string' ? JSON.parse(selectedCartForMenu.menuGallery) : (Array.isArray(selectedCartForMenu.menuGallery) ? selectedCartForMenu.menuGallery : []);
-                    if (!Array.isArray(menuGallery)) menuGallery = [];
-                  } catch (e) {
-                    menuGallery = [];
-                  }
-                  
-                  if (menuGallery.length > 0) {
-                    return (
-                      <div className="flex flex-col gap-6">
-                        {menuGallery.map((url, idx) => (
-                          <img 
-                            key={idx} 
-                            src={url} 
-                            alt={`Menu page ${idx + 1}`} 
-                            className="w-full rounded-xl shadow-sm border border-stone-100"
-                            referrerPolicy="no-referrer"
-                          />
-                        ))}
-                      </div>
-                    );
-                  } else {
-                    return (
-                      <div className="text-center py-12">
-                        <FileText size={48} className="mx-auto text-stone-300 mb-4" />
-                        <p className="text-stone-500 text-lg">No menu photos available for this cart.</p>
-                      </div>
-                    );
-                  }
-                })()}
+                {menuGallery.length > 0 ? (
+                  <div className="flex flex-col gap-6">
+                    {menuGallery.map((url, idx) => (
+                      <img 
+                        key={idx} 
+                        src={url} 
+                        alt={`Menu page ${idx + 1}`} 
+                        className="w-full rounded-xl shadow-sm border border-stone-100"
+                        referrerPolicy="no-referrer"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <FileText size={48} className="mx-auto text-stone-300 mb-4" />
+                    <p className="text-stone-500 text-lg">No menu photos available for this cart.</p>
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>
@@ -3976,58 +4117,64 @@ function FavoritesPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black z-[5000] flex items-center justify-center"
+            className="fixed inset-0 pt-[72px] p-4 sm:p-6 pb-8 bg-black/60 backdrop-blur-sm z-[1500] flex items-center justify-center"
             onClick={() => setSlideshowIndex(null)}
           >
-            <button 
-              className="absolute top-4 right-4 text-white p-2 hover:bg-white/20 rounded-full transition-colors z-[5001]"
-              onClick={() => setSlideshowIndex(null)}
-            >
-              <X size={32} />
-            </button>
-            <button 
-              className="absolute left-4 text-white p-4 hover:bg-white/20 rounded-full transition-colors z-[5001]"
-              onClick={(e) => { e.stopPropagation(); setSlideshowIndex((prev) => (prev! - 1 + favoriteCarts.length) % favoriteCarts.length); }}
-            >
-              <ChevronLeft size={48} />
-            </button>
-            <button 
-              className="absolute right-4 text-white p-4 hover:bg-white/20 rounded-full transition-colors z-[5001]"
-              onClick={(e) => { e.stopPropagation(); setSlideshowIndex((prev) => (prev! + 1) % favoriteCarts.length); }}
-            >
-              <ChevronRight size={48} />
-            </button>
-            
-            <img 
-              src={favoriteCarts[slideshowIndex].imageUrl || `https://picsum.photos/seed/cart-${favoriteCarts[slideshowIndex].id}/800/600`}
-              alt={favoriteCarts[slideshowIndex].name}
-              className="w-full h-full object-contain"
-              referrerPolicy="no-referrer"
-            />
-            
-            <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black/90 to-transparent text-white flex flex-col items-center z-[5001]">
-              <h2 className="text-2xl sm:text-4xl font-bold">{favoriteCarts[slideshowIndex].name}</h2>
-              <p className="text-stone-300 mt-1 text-sm sm:text-lg max-w-2xl text-center">{favoriteCarts[slideshowIndex].description}</p>
+            <div className="bg-black rounded-3xl w-full h-full relative overflow-hidden shadow-2xl border border-white/10" onClick={(e) => e.stopPropagation()}>
+              <button 
+                className="absolute top-4 right-4 text-white p-2 hover:bg-white/20 rounded-full transition-colors z-[5001]"
+                onClick={() => setSlideshowIndex(null)}
+              >
+                <X size={32} />
+              </button>
+              {favoriteCarts.length > 1 && (
+                <>
+                  <button 
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-white p-4 hover:bg-white/20 rounded-full transition-colors z-[5001]"
+                    onClick={(e) => { e.stopPropagation(); setSlideshowIndex((prev) => (prev! - 1 + favoriteCarts.length) % favoriteCarts.length); }}
+                  >
+                    <ChevronLeft size={48} />
+                  </button>
+                  <button 
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white p-4 hover:bg-white/20 rounded-full transition-colors z-[5001]"
+                    onClick={(e) => { e.stopPropagation(); setSlideshowIndex((prev) => (prev! + 1) % favoriteCarts.length); }}
+                  >
+                    <ChevronRight size={48} />
+                  </button>
+                </>
+              )}
               
-              <div className="flex gap-3 mt-4 justify-center">
-                <button 
-                  onClick={(e) => { e.stopPropagation(); toggleFavorite(favoriteCarts[slideshowIndex].id); }}
-                  className={`px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors text-sm sm:text-base ${localFavorites.includes(favoriteCarts[slideshowIndex].id) ? 'bg-rose-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}
-                >
-                  <Heart size={18} fill={localFavorites.includes(favoriteCarts[slideshowIndex].id) ? "currentColor" : "none"} />
-                </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setSelectedCartForMenu(favoriteCarts[slideshowIndex]); setMenuSlideshowIndex(0); setSlideshowIndex(null); }}
-                  className="bg-white text-black px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-stone-200 transition-colors text-sm sm:text-base"
-                >
-                  <FileText size={18} /> Menu
-                </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); navigate(`/pod/${favoriteCarts[slideshowIndex].podId}/map?highlight=${favoriteCarts[slideshowIndex].id}`); setSlideshowIndex(null); }}
-                  className="bg-emerald-600 text-white px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-500 transition-colors text-sm sm:text-base"
-                >
-                  <MapPin size={18} /> Map
-                </button>
+              <img 
+                src={favoriteCarts[slideshowIndex].imageUrl || `https://picsum.photos/seed/cart-${favoriteCarts[slideshowIndex].id}/800/600`}
+                alt={favoriteCarts[slideshowIndex].name}
+                className="w-full h-full object-contain"
+                referrerPolicy="no-referrer"
+              />
+              
+              <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 bg-gradient-to-t from-black/90 via-black/60 to-transparent text-white flex flex-col items-center z-[5001]">
+                <h2 className="text-2xl sm:text-4xl font-bold">{favoriteCarts[slideshowIndex].name}</h2>
+                <p className="text-stone-300 mt-1 text-sm sm:text-lg max-w-2xl text-center">{favoriteCarts[slideshowIndex].description}</p>
+                
+                <div className="flex flex-wrap gap-3 mt-4 justify-center">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); toggleFavorite(favoriteCarts[slideshowIndex].id); }}
+                    className={`px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors text-sm sm:text-base ${localFavorites.includes(favoriteCarts[slideshowIndex].id) ? 'bg-rose-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}
+                  >
+                    <Heart size={18} fill={localFavorites.includes(favoriteCarts[slideshowIndex].id) ? "currentColor" : "none"} />
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setSelectedCartForMenu(favoriteCarts[slideshowIndex]); setMenuSlideshowIndex(0); setSlideshowIndex(null); }}
+                    className="bg-white text-black px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-stone-200 transition-colors text-sm sm:text-base"
+                  >
+                    <FileText size={18} /> Menu
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); navigate(`/pod/${favoriteCarts[slideshowIndex].podId}/map?highlight=${favoriteCarts[slideshowIndex].id}`); setSlideshowIndex(null); }}
+                    className="bg-emerald-600 text-white px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-500 transition-colors text-sm sm:text-base"
+                  >
+                    <MapPin size={18} /> Pod Map
+                  </button>
+                </div>
               </div>
             </div>
           </motion.div>
@@ -4103,32 +4250,38 @@ function FavoritesPage() {
   );
 }
 
+import { TutorialProvider } from './TutorialContext';
+import { TutorialOverlay } from './TutorialOverlay';
+
 export default function App() {
   return (
     <PermissionsGate>
       <AuthProvider>
         <EditModeProvider>
           <Router>
-            <div className="h-screen flex flex-col overflow-hidden">
-              <Header />
-              {/* Main Content */}
-              <main className="flex-1 relative overflow-y-auto">
-                <Routes>
-                  <Route path="/" element={<MapView />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/pod/new" element={<PodForm />} />
-                  <Route path="/pod/:id" element={<PodPage />} />
-                  <Route path="/pod/:id/edit" element={<PodForm />} />
-                  <Route path="/pod/:id/map" element={<PodMapPage />} />
-                  <Route path="/pod/:podId/cart/new" element={<CartForm />} />
-                  <Route path="/cart/:id/owner" element={<CartOwnerPage />} />
-                  <Route path="/cart/:id/edit" element={<CartForm />} />
-                  <Route path="/moderator" element={<ModeratorPage />} />
-                  <Route path="/favorites" element={<FavoritesPage />} />
-                </Routes>
-              </main>
-
-            </div>
+            <TutorialProvider>
+              <div className="h-screen flex flex-col overflow-hidden">
+                <Header />
+                <TutorialOverlay />
+                {/* Main Content */}
+                <main className="flex-1 relative overflow-y-auto">
+                  <Routes>
+                    <Route path="/" element={<MapView />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/pod/new" element={<PodForm />} />
+                    <Route path="/pod/:id" element={<PodPage />} />
+                    <Route path="/pod/:id/edit" element={<PodForm />} />
+                    <Route path="/pod/:id/map" element={<PodMapPage />} />
+                    <Route path="/pod/:podId/cart/new" element={<CartForm />} />
+                    <Route path="/cart/:id" element={<CartPage />} />
+                    <Route path="/cart/:id/owner" element={<CartOwnerPage />} />
+                    <Route path="/cart/:id/edit" element={<CartForm />} />
+                    <Route path="/moderator" element={<ModeratorPage />} />
+                    <Route path="/favorites" element={<FavoritesPage />} />
+                  </Routes>
+                </main>
+              </div>
+            </TutorialProvider>
           </Router>
         </EditModeProvider>
       </AuthProvider>

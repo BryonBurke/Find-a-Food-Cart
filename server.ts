@@ -3,7 +3,7 @@ import { createServer as createViteServer } from "vite";
 import admin from "firebase-admin";
 import path from "path";
 import fs from "fs";
-import { GoogleGenAI, Type } from "@google/genai";
+// import { GoogleGenAI, Type } from "@google/genai";
 
 // Initialize Firebase Admin
 let db: admin.firestore.Firestore | null = null;
@@ -83,46 +83,6 @@ async function startServer() {
 
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
-
-  let ai: GoogleGenAI | null = null;
-  const getAi = () => {
-    if (!ai) {
-      if (!process.env.GEMINI_API_KEY) {
-        console.warn('GEMINI_API_KEY is not set. Content safety checks will be bypassed.');
-        return null;
-      }
-      ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    }
-    return ai;
-  };
-
-  const checkContentSafety = async (text: string) => {
-    if (!text || text.trim() === '') return { isHateful: false, reason: '' };
-    const aiClient = getAi();
-    if (!aiClient) return { isHateful: false, reason: '' }; // Bypass if no key
-    try {
-      const response = await aiClient.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: `Analyze the following text for hate speech, racism, anti-LGBTQ+ sentiment, or other highly offensive content. Text: "${text}"`,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              isHateful: { type: Type.BOOLEAN, description: "True if the text contains hate speech, racism, anti-LGBTQ+ sentiment, or highly offensive content." },
-              reason: { type: Type.STRING, description: "Explanation of why it was flagged, or empty string if safe." }
-            },
-            required: ["isHateful", "reason"]
-          }
-        }
-      });
-      const result = JSON.parse(response.text || '{"isHateful": false, "reason": ""}');
-      return result;
-    } catch (err) {
-      console.error("Safety check failed:", err);
-      return { isHateful: false, reason: '' };
-    }
-  };
 
   const authMiddleware = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const authHeader = req.headers.authorization;
@@ -259,12 +219,6 @@ async function startServer() {
       const { name, description, latitude, longitude, address, imageUrl } = req.body;
       const data = { name, description, latitude, longitude, address, imageUrl };
       
-      const safety = await checkContentSafety(`${name} ${description} ${address}`);
-      if (safety.isHateful) {
-        await logAction((req as any).user.email || 'Unknown User', 'Blocked Offensive Content', `Attempted to create Pod. Reason: ${safety.reason}`, { attemptedData: stripImages(data) });
-        return res.status(400).json({ error: `Content flagged for violating community guidelines: ${safety.reason}` });
-      }
-
       const docRef = await getDb().collection("pods").add(data);
       await logAction((req as any).user.email || 'Unknown User', 'Created Pod', `Pod: ${name}`, { added: stripImages(data) }, docRef.id, 'pods');
       res.json({ id: docRef.id });
@@ -279,12 +233,6 @@ async function startServer() {
       const { name, description, latitude, longitude, address, imageUrl } = req.body;
       const data = { name, description, latitude, longitude, address, imageUrl };
       
-      const safety = await checkContentSafety(`${name} ${description} ${address}`);
-      if (safety.isHateful) {
-        await logAction((req as any).user.email || 'Unknown User', 'Blocked Offensive Content', `Attempted to update Pod. Reason: ${safety.reason}`, { attemptedData: stripImages(data) });
-        return res.status(400).json({ error: `Content flagged for violating community guidelines: ${safety.reason}` });
-      }
-
       const oldDoc = await getDb().collection("pods").doc(req.params.id).get();
       const oldData = oldDoc.exists ? oldDoc.data() : null;
 
@@ -403,12 +351,6 @@ async function startServer() {
       if (openTime !== undefined) data.openTime = openTime;
       if (closeTime !== undefined) data.closeTime = closeTime;
       
-      const safety = await checkContentSafety(`${name} ${description} ${cuisine}`);
-      if (safety.isHateful) {
-        await logAction((req as any).user.email || 'Unknown User', 'Blocked Offensive Content', `Attempted to create Cart. Reason: ${safety.reason}`, { attemptedData: stripImages(data) });
-        return res.status(400).json({ error: `Content flagged for violating community guidelines: ${safety.reason}` });
-      }
-
       const docRef = await getDb().collection("carts").add(data);
       await logAction((req as any).user.email || 'Unknown User', 'Created Cart', `Cart: ${name}`, { added: stripImages(data) }, docRef.id, 'carts');
       res.json({ id: docRef.id });
@@ -428,12 +370,6 @@ async function startServer() {
       if (openTime !== undefined) data.openTime = openTime;
       if (closeTime !== undefined) data.closeTime = closeTime;
       
-      const safety = await checkContentSafety(`${name} ${description} ${cuisine}`);
-      if (safety.isHateful) {
-        await logAction((req as any).user.email || 'Unknown User', 'Blocked Offensive Content', `Attempted to update Cart. Reason: ${safety.reason}`, { attemptedData: stripImages(data) });
-        return res.status(400).json({ error: `Content flagged for violating community guidelines: ${safety.reason}` });
-      }
-
       const oldDoc = await getDb().collection("carts").doc(req.params.id).get();
       const oldData = oldDoc.exists ? oldDoc.data() : null;
 
