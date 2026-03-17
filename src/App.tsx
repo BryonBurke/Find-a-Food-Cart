@@ -522,11 +522,14 @@ function MapView() {
   const fetchCarts = async () => {
     try {
       const res = await fetch('/api/carts');
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
       const data = await res.json();
       if (Array.isArray(data)) {
         setCarts(data);
       } else {
-        console.error("Failed to fetch carts:", data);
+        console.error("Failed to fetch carts: data is not an array:", data);
         setFetchError(data.error || "Failed to load carts");
         setCarts([]);
       }
@@ -1420,7 +1423,7 @@ function PodPage() {
                 >
                   <MapPin size={18} /> Map
                 </button>
-                {editMode && (
+                {!!user && !!user.uid && !user.isAnonymous && editMode && (
                   <>
                     <button 
                       onClick={(e) => { e.stopPropagation(); navigate(`/cart/${carts[slideshowIndex].id}/edit`); setSlideshowIndex(null); }}
@@ -1769,10 +1772,19 @@ function CartPage() {
     menuGallery = [];
   }
 
-  const canEdit = !cart.ownerEmail || 
-    !user ||
-    (user && user.email?.toLowerCase() === cart.ownerEmail) || 
-    (user && user.email?.toLowerCase() === 'bryonparis@gmail.com');
+  const canEdit = !!user && !user.isAnonymous && (
+    !cart.ownerEmail || 
+    user.email?.toLowerCase() === cart.ownerEmail || 
+    user.email?.toLowerCase() === 'bryonparis@gmail.com'
+  );
+
+  console.log("CartPage debug:", { 
+    user: !!user, 
+    userEmail: user?.email, 
+    isAnonymous: user?.isAnonymous, 
+    canEdit, 
+    editMode 
+  });
 
   const [isFavorite, setIsFavorite] = useState(false);
 
@@ -1863,7 +1875,7 @@ function CartPage() {
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill={isFavorite ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
           </button>
-          {canEdit && editMode && (
+          {!!user && !!user.uid && !user.isAnonymous && canEdit && editMode && (
             <>
               <button 
                 onClick={() => {
@@ -2376,6 +2388,18 @@ function CartForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8 bg-white p-8 rounded-3xl shadow-sm border border-stone-100">
+        {/* 0. Cart Name */}
+        <div>
+          <label className="block text-sm font-semibold text-stone-700 mb-2">Cart Name</label>
+          <input
+            type="text"
+            value={formData.name || ''}
+            onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-emerald-50 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+            placeholder="e.g. Matt's BBQ"
+          />
+        </div>
+
         {/* 1. Main Image Section */}
         <div>
           <label className="block text-sm font-semibold text-stone-700 mb-2">Main Image</label>
@@ -2467,28 +2491,7 @@ function CartForm() {
         </div>
 
         {/* 3. Cart Name & Cuisine */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-semibold text-stone-700 mb-2">Cart Name</label>
-            <input
-              type="text"
-              value={formData.name || ''}
-              onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-emerald-50 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
-              placeholder="e.g. Matt's BBQ"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-stone-700 mb-2">Cuisine Type</label>
-            <input
-              type="text"
-              value={formData.cuisine || ''}
-              onChange={e => setFormData(prev => ({ ...prev, cuisine: e.target.value }))}
-              className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-emerald-50 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
-              placeholder="e.g. Texas BBQ, Thai, Vegan"
-            />
-          </div>
+        <div className="hidden">
         </div>
 
         {/* 4. Times */}
@@ -2533,6 +2536,18 @@ function CartForm() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* 5.5 Description */}
+        <div>
+          <label className="block text-sm font-semibold text-stone-700 mb-2">Description (Optional)</label>
+          <textarea
+            rows={4}
+            value={formData.description || ''}
+            onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-emerald-50 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+            placeholder="Tell us about this cart..."
+          />
         </div>
 
         {/* 6. Food Tags Section (New) */}
@@ -2993,7 +3008,7 @@ function PodMapPage() {
           <CenterPodButton pod={pod} setPod={setPod} />
         </APIProvider>
 
-        {selectedCartId && editMode && (
+        {selectedCartId && !!user && !!user.uid && !user.isAnonymous && editMode && (
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md p-4 rounded-3xl shadow-2xl border border-stone-200 z-[2000] flex flex-col items-center gap-4 w-[280px]">
             <div className="text-sm font-bold text-stone-700">Move Cart</div>
             <div className="grid grid-cols-3 gap-2">
@@ -3011,7 +3026,7 @@ function PodMapPage() {
           </div>
         )}
 
-        {!selectedCartId && unplacedCarts.length > 0 && editMode && (
+        {!selectedCartId && unplacedCarts.length > 0 && !!user && !!user.uid && !user.isAnonymous && editMode && (
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-full max-w-md px-4 z-10">
             <div className="bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden">
               <div className="bg-stone-100 px-4 py-2 border-b border-stone-200 font-bold text-sm text-stone-600 flex justify-between items-center">
