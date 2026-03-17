@@ -7,7 +7,7 @@
 import React, { useState, useEffect, FormEvent, ChangeEvent, MouseEvent, useMemo, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { APIProvider, Map as GoogleMap, AdvancedMarker, Pin, useMap, useMapsLibrary } from '@vis.gl/react-google-maps';
-import { MapPin, Plus, Edit2, Trash2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Utensils, Info, Camera, Star, Instagram, Globe, FileText, ExternalLink, Navigation, X, Clock, Map as MapIcon, List, Play, Square, Search, Menu, Heart } from 'lucide-react';
+import { MapPin, Plus, Edit2, Trash2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Utensils, Info, Camera, Star, Instagram, Globe, FileText, ExternalLink, Navigation, X, Clock, Map as MapIcon, List, Play, Square, Search, Menu, Heart, Mic, File } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Pod, Cart } from './types';
 import { AuthProvider, useAuth } from './AuthContext';
@@ -171,6 +171,74 @@ function CameraInput({ onCapture, label, className, capture = true }: { onCaptur
         className="hidden"
       />
     </label>
+  );
+}
+
+function FileInput({ onCapture, label, className }: { onCapture: (url: string) => void, label?: React.ReactNode, className?: string }) {
+  const handleChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const url = await fileToDataUrl(file);
+        onCapture(url);
+      } catch (err) {
+        console.error("Error uploading file:", err);
+      }
+    }
+  };
+
+  return (
+    <label className={`cursor-pointer flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 px-4 py-2 rounded-xl transition-colors text-emerald-700 font-medium ${className}`}>
+      <File size={18} />
+      <span>{label || 'Upload File'}</span>
+      <input
+        type="file"
+        accept="image/*"
+        onChange={handleChange}
+        className="hidden"
+      />
+    </label>
+  );
+}
+
+function VoiceInput({ onResult, className }: { onResult: (text: string) => void, className?: string }) {
+  const [isListening, setIsListening] = useState(false);
+
+  const startListening = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not supported in this browser.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error:", event.error);
+      setIsListening(false);
+    };
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      onResult(transcript);
+    };
+
+    recognition.start();
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={startListening}
+      className={`p-2 rounded-full transition-colors ${isListening ? 'bg-red-100 text-red-600 animate-pulse' : 'hover:bg-stone-100 text-stone-400'} ${className}`}
+      title="Voice Input"
+    >
+      <Mic size={18} />
+    </button>
   );
 }
 
@@ -656,9 +724,13 @@ function MapView() {
     }
   }, [navTarget]);
 
+  const cartSearch = searchParams.get('cartSearch') || '';
+
   const filteredPods = useMemo(() => {
-    if (!searchTag || searchTag.length < 2) return pods;
-    const search = searchTag.toUpperCase();
+    if (!searchTag && !cartSearch) return pods;
+    
+    const tagSearch = searchTag.toUpperCase();
+    const nameSearch = cartSearch.toUpperCase();
     
     const tagToNameMap = new Map<string, string>();
     carts.forEach(c => {
@@ -676,27 +748,35 @@ function MapView() {
 
     const matchingCartPodIds = new Set(
       carts.filter(c => {
-        try {
-          const tags = typeof c.tags === 'string' ? JSON.parse(c.tags || '[]') : (Array.isArray(c.tags) ? c.tags : []);
-          return Array.isArray(tags) && tags.some(t => {
-            if (typeof t === 'string') {
-              const upper = t.toUpperCase();
-              const fullName = tagToNameMap.get(upper) || upper;
-              return fullName.includes(search) || upper.includes(search);
-            }
-            if (typeof t === 'object' && t !== null) {
-              const nameMatch = t.name && t.name.toUpperCase().includes(search);
-              const tagMatch = t.tag && t.tag.toUpperCase().includes(search);
-              return nameMatch || tagMatch;
-            }
-            return false;
-          });
-        } catch(e) { return false; }
+        // Handle name search if active
+        if (nameSearch && c.name.toUpperCase().includes(nameSearch)) return true;
+        
+        // Handle tag search if active
+        if (tagSearch) {
+          try {
+            const tags = typeof c.tags === 'string' ? JSON.parse(c.tags || '[]') : (Array.isArray(c.tags) ? c.tags : []);
+            return Array.isArray(tags) && tags.some(t => {
+              if (typeof t === 'string') {
+                const upper = t.toUpperCase();
+                const fullName = tagToNameMap.get(upper) || upper;
+                return fullName.includes(tagSearch) || upper.includes(tagSearch);
+              }
+              if (typeof t === 'object' && t !== null) {
+                const nameMatch = t.name && t.name.toUpperCase().includes(tagSearch);
+                const tagMatch = t.tag && t.tag.toUpperCase().includes(tagSearch);
+                return nameMatch || tagMatch;
+              }
+              return false;
+            });
+          } catch(e) { return false; }
+        }
+        
+        return false;
       }).map(c => c.podId)
     );
     
     return pods.filter(p => matchingCartPodIds.has(p.id));
-  }, [pods, carts, searchTag]);
+  }, [pods, carts, searchTag, cartSearch]);
 
   if (!userLocation) return <div className="h-full w-full flex items-center justify-center bg-stone-100">Loading map...</div>;
 
@@ -852,10 +932,7 @@ function MapView() {
             <div className="bg-emerald-50 w-14 h-14 rounded-2xl flex items-center justify-center text-emerald-600 mb-6 shadow-inner">
               <Info size={28} />
             </div>
-            <h2 className="text-2xl font-black text-stone-900 mb-3 tracking-tight">Welcome!</h2>
-            <p className="text-stone-600 leading-relaxed mb-8 font-medium">
-              Hi! Quick tip: click near a pod and the map will zoom to block level. If you want to add or edit a cart please sign up for an account. All that stuff is under the hamburger.
-            </p>
+            <h2 className="text-2xl font-black text-stone-900 mb-8 tracking-tight">New? Check the hamburger to the right</h2>
             <div className="flex flex-col gap-3">
               <button 
                 onClick={() => setShowWelcomeTip(false)}
@@ -1012,19 +1089,7 @@ function MapView() {
               Cancel
             </button>
           </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {user && editMode && (
-              <button
-                onClick={() => setSearchParams({ mode: 'add' })}
-                className="flex items-center justify-center px-6 h-14 bg-stone-900 text-white rounded-full shadow-lg hover:bg-stone-800 transition-transform hover:scale-110 sm:hidden font-bold gap-2"
-                title="Add Pod"
-              >
-                <Plus size={20} /> Add Pod
-              </button>
-            )}
-          </div>
-        )}
+        ) : null}
       </div>
 
       {isAddingPod && !tempMarker && (
@@ -1507,18 +1572,30 @@ function PodPage() {
         )}
       </AnimatePresence>
 
-      <div className="flex items-center justify-between gap-4 mb-8">
-        <div className="flex items-center gap-4 min-w-0">
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black bg-gradient-to-br from-slate-200 via-slate-400 to-slate-200 bg-clip-text text-transparent drop-shadow-lg truncate">{pod.name}</h1>
-            <p className="text-stone-500 font-medium truncate">
-              {pod.address}
-            </p>
+      <div className="flex flex-col gap-4 mb-8">
+        <div className="flex items-center justify-between gap-4 min-w-0">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black bg-gradient-to-br from-slate-200 via-slate-400 to-slate-200 bg-clip-text text-transparent drop-shadow-lg truncate">{pod.name}</h1>
+              <p className="text-stone-300 font-medium truncate">
+                {pod.address}
+              </p>
+            </div>
+            <button 
+              onClick={() => {
+                window.dispatchEvent(new Event('reset-map'));
+                navigate('/');
+              }}
+              className="flex-shrink-0 flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl transition-colors font-bold shadow-lg"
+            >
+              <MapIcon size={18} />
+              <span className="hidden xs:inline">Main Map</span>
+              <span className="xs:hidden">Map</span>
+            </button>
           </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          {editMode && user && (
+          
+          <div className="flex items-center gap-2">
+            {editMode && user && (
             <div className="flex gap-2 mr-2">
               <button 
                 onClick={() => navigate(`/pod/${pod.id}/cart/new`)}
@@ -1545,6 +1622,7 @@ function PodPage() {
           )}
         </div>
       </div>
+    </div>
 
       {carts.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1901,6 +1979,18 @@ function CartPage() {
       animate={{ opacity: 1 }}
       className="max-w-4xl mx-auto p-4 pb-24"
     >
+      <div className="flex items-center justify-between mb-6">
+        <button 
+          onClick={() => {
+            window.dispatchEvent(new Event('reset-map'));
+            navigate('/');
+          }}
+          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl transition-colors font-bold shadow-lg"
+        >
+          <MapIcon size={18} />
+          <span>Main Map</span>
+        </button>
+      </div>
       <AnimatePresence>
         {showDeleteConfirm && (
           <motion.div 
@@ -2208,7 +2298,6 @@ function PodForm() {
     description: '',
     latitude: initialLat,
     longitude: initialLng,
-    address: '',
     imageUrl: ''
   });
 
@@ -2227,7 +2316,7 @@ function PodForm() {
     setIsSubmitting(true);
     setErrorMsg(null);
     try {
-      const safety = await checkContentSafety(`${formData.name || ''} ${formData.description || ''} ${formData.address || ''}`);
+      const safety = await checkContentSafety(`${formData.name || ''} ${formData.description || ''}`);
       if (safety.isHateful) {
         setErrorMsg(`Content flagged for violating community guidelines: ${safety.reason}`);
         setIsSubmitting(false);
@@ -2280,25 +2369,20 @@ function PodForm() {
       <form onSubmit={handleSubmit} className="space-y-6 bg-white p-8 rounded-3xl shadow-sm border border-stone-100">
         <div>
           <label className="block text-sm font-semibold text-stone-700 mb-2">Pod Name</label>
-          <input
-            required
-            type="text"
-            value={formData.name || ''}
-            onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-            className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-emerald-50 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
-            placeholder="e.g. Hawthorne Asylum"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-stone-700 mb-2">Address (Optional)</label>
-          <input
-            type="text"
-            value={formData.address || ''}
-            onChange={e => setFormData(prev => ({ ...prev, address: e.target.value }))}
-            className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-emerald-50 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
-            placeholder="123 SE 10th Ave, Portland, OR"
-          />
+          <div className="relative">
+            <input
+              required
+              type="text"
+              value={formData.name || ''}
+              onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              className="w-full pl-4 pr-12 py-3 rounded-xl border border-stone-200 bg-emerald-50 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+              placeholder="e.g. Hawthorne Asylum"
+            />
+            <VoiceInput 
+              onResult={(text) => setFormData(prev => ({ ...prev, name: text }))} 
+              className="absolute right-2 top-1/2 -translate-y-1/2"
+            />
+          </div>
         </div>
 
         <div>
@@ -2310,24 +2394,6 @@ function PodForm() {
             className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-emerald-50 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
             placeholder="Tell us about this pod..."
           />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-stone-700 mb-2">Image URL (Optional)</label>
-          <div className="flex flex-col gap-3">
-            <div className="flex-1 relative">
-              <Camera className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
-              <input
-                type="url"
-                value={formData.imageUrl || ''}
-                onChange={e => setFormData(prev => ({ ...prev, imageUrl: e.target.value }))}
-                className="w-full pl-12 pr-4 py-3 rounded-xl border border-stone-200 bg-emerald-50 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
-                placeholder="https://..."
-              />
-            </div>
-            <CameraInput capture={true} onCapture={(url) => setFormData(prev => ({ ...prev, imageUrl: url }))} label="Capture Pod Photo" />
-            <CameraInput capture={false} onCapture={(url) => setFormData(prev => ({ ...prev, imageUrl: url }))} label="Upload Pod Photo" />
-          </div>
         </div>
 
         <button
@@ -2531,13 +2597,19 @@ function CartForm() {
         {/* 0. Cart Name */}
         <div>
           <label className="block text-sm font-semibold text-stone-700 mb-2">Cart Name</label>
-          <input
-            type="text"
-            value={formData.name || ''}
-            onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-            className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-emerald-50 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
-            placeholder="e.g. Matt's BBQ"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              value={formData.name || ''}
+              onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              className="w-full pl-4 pr-12 py-3 rounded-xl border border-stone-200 bg-emerald-50 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+              placeholder="e.g. Matt's BBQ"
+            />
+            <VoiceInput 
+              onResult={(text) => setFormData(prev => ({ ...prev, name: text }))} 
+              className="absolute right-2 top-1/2 -translate-y-1/2"
+            />
+          </div>
         </div>
 
         {/* 1. Main Image Section */}
@@ -2559,7 +2631,7 @@ function CartForm() {
             {!formData.imageUrl && (
               <div className="flex flex-col sm:flex-row gap-3">
                 <CameraInput capture={true} onCapture={(url) => setFormData(prev => ({ ...prev, imageUrl: url }))} label={<span className="font-black text-2xl">MAIN PIC</span>} className="flex-1 py-6 border-2 border-dashed border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50" />
-                <CameraInput capture={false} onCapture={(url) => setFormData(prev => ({ ...prev, imageUrl: url }))} label={<span className="font-black text-2xl">MAIN PIC</span>} className="flex-1 py-6 border-2 border-dashed border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50" />
+                <FileInput onCapture={(url) => setFormData(prev => ({ ...prev, imageUrl: url }))} label={<span className="font-black text-2xl">MAIN PIC</span>} className="flex-1 py-6 border-2 border-dashed border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50" />
               </div>
             )}
           </div>
@@ -2610,8 +2682,7 @@ function CartForm() {
                       label={<span className="font-black text-2xl">MENU PICS</span>} 
                       className="flex-1 py-6 border-2 border-dashed border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50" 
                     />
-                    <CameraInput 
-                      capture={false}
+                    <FileInput 
                       onCapture={(url) => {
                         setFormData(prev => {
                           let current = [];
@@ -3037,6 +3108,16 @@ function PodMapPage() {
     <div className="absolute inset-0 flex flex-col">
       <div className="bg-white/90 backdrop-blur-md border-b border-stone-200 px-4 py-3 flex items-center justify-between z-10 shadow-sm">
         <div className="flex items-center gap-4">
+          <button 
+            onClick={() => {
+              window.dispatchEvent(new Event('reset-map'));
+              navigate('/');
+            }}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl transition-colors font-bold shadow-sm text-sm"
+          >
+            <MapIcon size={16} />
+            <span>Main Map</span>
+          </button>
           <div>
             <h1 className="text-xl font-bold text-stone-900 leading-tight">{pod.name}</h1>
           </div>
@@ -3606,6 +3687,16 @@ function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPage?: boo
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             className="absolute top-full right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col py-2 z-[3000]"
           >
+            <button 
+              onClick={() => {
+                setMenuOpen(false);
+                window.dispatchEvent(new Event('open-cart-search'));
+              }} 
+              className="px-4 py-3 text-sm font-semibold text-stone-700 hover:bg-stone-100 transition-colors flex items-center gap-2 text-left border-b border-stone-100"
+            >
+              <Search size={16} /> Search for Cart
+            </button>
+
             {isHome && user && (
               <button 
                 onClick={() => {
@@ -3805,6 +3896,29 @@ function Header() {
     return Array.from(tagsSet).sort();
   }, [carts]);
 
+  const [isCartSearching, setIsCartSearching] = useState(false);
+  const cartSearch = searchParams.get('cartSearch') || '';
+  
+  useEffect(() => {
+    const handleOpenCartSearch = () => {
+      setIsCartSearching(true);
+      if (location.pathname !== '/') {
+        navigate('/');
+      }
+    };
+    window.addEventListener('open-cart-search', handleOpenCartSearch);
+    return () => window.removeEventListener('open-cart-search', handleOpenCartSearch);
+  }, [location.pathname, navigate]);
+
+  const setCartSearch = (query: string) => {
+    if (query) {
+      searchParams.set('cartSearch', query);
+    } else {
+      searchParams.delete('cartSearch');
+    }
+    setSearchParams(searchParams);
+  };
+
   const searchTag = searchParams.get('tag') || '';
   const setSearchTag = (tag: string) => {
     if (tag) {
@@ -3820,7 +3934,7 @@ function Header() {
   return (
     <header className="bg-white/80 backdrop-blur-md border-b border-stone-200 sticky top-0 z-[2000] px-4 py-3 flex-shrink-0">
       <div className="max-w-7xl mx-auto flex items-center justify-between pointer-events-auto">
-        <div className="flex items-center gap-4">
+        <div className={`flex items-center gap-4 ${isCartSearching ? 'hidden sm:flex' : 'flex'}`}>
           {location.pathname !== '/' && (
             <button onClick={() => navigate(-1)} className="p-2 hover:bg-stone-100 rounded-full transition-colors text-stone-600">
               <ChevronLeft size={24} />
@@ -3829,7 +3943,10 @@ function Header() {
           <Link 
             to="/" 
             className="flex items-center gap-2 group"
-            onClick={() => window.dispatchEvent(new Event('reset-map'))}
+            onClick={() => {
+              window.dispatchEvent(new Event('reset-map'));
+              setIsCartSearching(false);
+            }}
           >
             <div className="bg-emerald-600 p-2 rounded-xl group-hover:rotate-12 transition-transform shadow-lg">
               <Utensils className="text-white" size={20} />
@@ -3839,37 +3956,79 @@ function Header() {
           </Link>
         </div>
 
-        {isHome && (
-          <div className="mx-4 flex-1 max-w-xs">
-            {searchTag ? (
-              <div className="bg-emerald-600 rounded-full shadow-lg border border-emerald-500 flex items-center justify-between px-4 py-2 text-white">
-                <div className="flex items-center overflow-hidden">
-                  <Search size={18} className="mr-2 opacity-80 flex-shrink-0" />
-                  <span className="font-bold text-sm uppercase truncate">{searchTag}</span>
-                </div>
-                <button 
-                  onClick={() => setSearchTag('')}
-                  className="ml-2 bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full text-xs font-bold transition-colors flex-shrink-0"
-                >
-                  Done
-                </button>
+        {isCartSearching ? (
+          <div className="mx-4 flex-1 max-w-md relative flex items-center gap-2">
+            <div className="flex-1 bg-stone-100 rounded-full flex items-center px-4 py-2 border border-stone-200 shadow-inner">
+              <Search size={18} className="text-stone-400 mr-2 flex-shrink-0" />
+              <input 
+                autoFocus
+                type="text"
+                placeholder="Search for a cart..."
+                className="w-full bg-transparent outline-none text-sm font-semibold text-stone-700"
+                value={cartSearch}
+                onChange={e => setCartSearch(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') setIsCartSearching(false);
+                }}
+              />
+            </div>
+            <button 
+              onClick={() => {
+                setIsCartSearching(false);
+                setCartSearch('');
+              }}
+              className="text-stone-500 hover:text-stone-700 p-1"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 flex-1 justify-center max-w-xs mx-4">
+            {isHome && (
+              <div className="w-full">
+                {searchTag ? (
+                  <div className="bg-emerald-600 rounded-full shadow-lg border border-emerald-500 flex items-center justify-between px-4 py-2 text-white">
+                    <div className="flex items-center overflow-hidden">
+                      <Search size={18} className="mr-2 opacity-80 flex-shrink-0" />
+                      <span className="font-bold text-sm uppercase truncate">{searchTag}</span>
+                    </div>
+                    <button 
+                      onClick={() => setSearchTag('')}
+                      className="ml-2 bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full text-xs font-bold transition-colors flex-shrink-0"
+                    >
+                      Done
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-full shadow-lg border border-stone-200 flex items-center px-4 py-2 relative">
+                    <Search size={18} className="text-stone-400 mr-2 flex-shrink-0" />
+                    <select
+                      className="w-full bg-transparent outline-none text-sm font-semibold text-stone-700 uppercase appearance-none cursor-pointer"
+                      value={searchTag}
+                      onChange={e => setSearchTag(e.target.value)}
+                    >
+                      <option value="">All Food Types</option>
+                      {availableTags.map(tag => (
+                        <option key={tag} value={tag}>{tag}</option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
+                      <svg className="h-4 w-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="bg-white rounded-full shadow-lg border border-stone-200 flex items-center px-4 py-2 relative">
-                <Search size={18} className="text-stone-400 mr-2 flex-shrink-0" />
-                <select
-                  className="w-full bg-transparent outline-none text-sm font-semibold text-stone-700 uppercase appearance-none cursor-pointer"
-                  value={searchTag}
-                  onChange={e => setSearchTag(e.target.value)}
+            )}
+            
+            {isHome && cartSearch && (
+              <div className="bg-stone-800 rounded-full shadow-lg border border-stone-700 flex items-center justify-between px-4 py-2 text-white min-w-[120px]">
+                <span className="font-bold text-xs uppercase truncate mr-2">{cartSearch}</span>
+                <button 
+                  onClick={() => setCartSearch('')}
+                  className="text-white/60 hover:text-white"
                 >
-                  <option value="">All Food Types</option>
-                  {availableTags.map(tag => (
-                    <option key={tag} value={tag}>{tag}</option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
-                  <svg className="h-4 w-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                </div>
+                  <X size={14} />
+                </button>
               </div>
             )}
           </div>

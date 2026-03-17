@@ -216,8 +216,8 @@ async function startServer() {
 
   app.post("/api/pods", authMiddleware, async (req, res) => {
     try {
-      const { name, description, latitude, longitude, address, imageUrl } = req.body;
-      const data = { name, description, latitude, longitude, address, imageUrl };
+      const { name, description, latitude, longitude } = req.body;
+      const data = { name, description, latitude, longitude };
       
       const docRef = await getDb().collection("pods").add(data);
       await logAction((req as any).user.email || 'Unknown User', 'Created Pod', `Pod: ${name}`, { added: stripImages(data) }, docRef.id, 'pods');
@@ -230,8 +230,8 @@ async function startServer() {
 
   app.put("/api/pods/:id", authMiddleware, async (req, res) => {
     try {
-      const { name, description, latitude, longitude, address, imageUrl } = req.body;
-      const data = { name, description, latitude, longitude, address, imageUrl };
+      const { name, description, latitude, longitude } = req.body;
+      const data = { name, description, latitude, longitude };
       
       const oldDoc = await getDb().collection("pods").doc(req.params.id).get();
       const oldData = oldDoc.exists ? oldDoc.data() : null;
