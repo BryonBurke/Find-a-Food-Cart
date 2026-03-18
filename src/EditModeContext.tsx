@@ -3,14 +3,17 @@ import React, { createContext, useContext, useState } from 'react';
 interface EditModeContextType {
   editMode: boolean;
   setEditMode: (mode: boolean) => void;
+  toggleEditMode: () => void;
 }
 
 const EditModeContext = createContext<EditModeContextType | undefined>(undefined);
 
 export function EditModeProvider({ children }: { children: React.ReactNode }) {
   const [editMode, setEditMode] = useState(false);
+  const toggleEditMode = () => setEditMode(prev => !prev);
+
   return (
-    <EditModeContext.Provider value={{ editMode, setEditMode }}>
+    <EditModeContext.Provider value={{ editMode, setEditMode, toggleEditMode }}>
       {children}
     </EditModeContext.Provider>
   );

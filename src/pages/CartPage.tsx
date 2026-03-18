@@ -410,7 +410,7 @@ export default function CartPage() {
           onClick={() => setFullscreenImage(null)}
         >
           <button 
-            className="absolute top-4 right-4 text-white p-2 hover:bg-white/20 rounded-full transition-colors"
+            className="absolute top-[150px] right-4 text-white p-2 hover:bg-white/20 rounded-full transition-colors"
             onClick={(e) => {
               e.stopPropagation();
               setFullscreenImage(null);

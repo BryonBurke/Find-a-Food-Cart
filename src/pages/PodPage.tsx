@@ -276,30 +276,34 @@ export default function PodPage() {
             className="fixed inset-0 bg-black z-[5000] flex items-center justify-center"
             onClick={() => setMenuSlideshowIndex(null)}
           >
-            <button 
-              className="absolute top-4 right-4 text-white p-2 hover:bg-white/20 rounded-full transition-colors z-[5001]"
-              onClick={() => { setMenuSlideshowIndex(null); setSelectedCartForMenu(null); }}
-            >
-              <X size={32} />
-            </button>
-            <button 
-              className="absolute top-4 left-4 text-white px-4 py-2 hover:bg-white/20 rounded-full transition-colors z-[5001] font-bold"
-              onClick={() => { setMenuSlideshowIndex(null); setSelectedCartForMenu(null); }}
-            >
-              Done
-            </button>
-            <button 
-              className="absolute left-4 text-white p-4 hover:bg-white/20 rounded-full transition-colors z-[5001]"
-              onClick={(e) => { e.stopPropagation(); setMenuSlideshowIndex((prev) => (prev! - 1 + menuGallery.length) % menuGallery.length); }}
-            >
-              <ChevronLeft size={48} />
-            </button>
-            <button 
-              className="absolute right-4 text-white p-4 hover:bg-white/20 rounded-full transition-colors z-[5001]"
-              onClick={(e) => { e.stopPropagation(); setMenuSlideshowIndex((prev) => (prev! + 1) % menuGallery.length); }}
-            >
-              <ChevronRight size={48} />
-            </button>
+          <button 
+            className="absolute top-[150px] right-4 text-white p-2 hover:bg-white/20 rounded-full transition-colors z-[5001]"
+            onClick={() => { setMenuSlideshowIndex(null); setSelectedCartForMenu(null); }}
+          >
+            <X size={32} />
+          </button>
+          <button 
+            className="absolute top-[150px] left-4 text-white px-4 py-2 hover:bg-white/20 rounded-full transition-colors z-[5001] font-bold"
+            onClick={() => { setMenuSlideshowIndex(null); setSelectedCartForMenu(null); }}
+          >
+            Done
+          </button>
+            {menuGallery.length > 1 && (
+              <>
+                <button 
+                  className="absolute left-4 text-white p-4 hover:bg-white/20 rounded-full transition-colors z-[5001]"
+                  onClick={(e) => { e.stopPropagation(); setMenuSlideshowIndex((prev) => (prev! - 1 + menuGallery.length) % menuGallery.length); }}
+                >
+                  <ChevronLeft size={48} />
+                </button>
+                <button 
+                  className="absolute right-4 text-white p-4 hover:bg-white/20 rounded-full transition-colors z-[5001]"
+                  onClick={(e) => { e.stopPropagation(); setMenuSlideshowIndex((prev) => (prev! + 1) % menuGallery.length); }}
+                >
+                  <ChevronRight size={48} />
+                </button>
+              </>
+            )}
             
             <img 
               src={menuGallery[menuSlideshowIndex]}
@@ -322,7 +326,7 @@ export default function PodPage() {
           >
             <div className="bg-black rounded-3xl w-full h-full relative overflow-hidden shadow-2xl border border-white/10" onClick={(e) => e.stopPropagation()}>
               <button 
-                className="absolute top-4 right-4 text-white p-2 hover:bg-white/20 rounded-full transition-colors z-[5001]"
+                className="absolute top-[150px] right-4 text-white p-2 hover:bg-white/20 rounded-full transition-colors z-[5001]"
                 onClick={() => setSlideshowIndex(null)}
               >
                 <X size={32} />
@@ -454,7 +458,7 @@ export default function PodPage() {
                   referrerPolicy="no-referrer"
                 />
                 <div className="absolute top-4 right-4 flex gap-2">
-                  <span className="bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-emerald-700 shadow-sm uppercase tracking-wider">
+                  <span className="bg-white px-3 py-1 rounded-full text-xs font-bold text-black shadow-sm uppercase tracking-wider">
                     {cart.cuisine}
                   </span>
                   {isCartOpen(cart.openTime, cart.closeTime) && (

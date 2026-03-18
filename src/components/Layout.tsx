@@ -17,6 +17,23 @@ export function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPag
   const { editMode, toggleEditMode } = useEditMode();
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+  const menuRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -27,7 +44,7 @@ export function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPag
   const isModerator = user?.email?.toLowerCase() === 'bryonparis@gmail.com';
 
   return (
-    <div className="relative">
+    <div className="relative" ref={menuRef}>
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className="p-2 hover:bg-stone-100 rounded-full transition-colors text-stone-600"
@@ -37,98 +54,89 @@ export function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPag
 
       <AnimatePresence>
         {isOpen && (
-          <>
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[3000]"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: -20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -20 }}
-              className="absolute right-0 mt-2 w-64 bg-white rounded-3xl shadow-2xl border border-stone-100 z-[3001] overflow-hidden"
-            >
-              <div className="p-4 border-b border-stone-50 bg-stone-50/50">
-                <div className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Account</div>
-                <div className="text-sm font-bold text-stone-900 truncate">{user?.email || 'Guest User'}</div>
-              </div>
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: -20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -20 }}
+            className="absolute right-0 mt-2 w-64 bg-white rounded-3xl shadow-2xl border border-stone-100 z-[3001] overflow-hidden"
+          >
+            <div className="p-4 border-b border-stone-50 bg-stone-50/50">
+              <div className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Account</div>
+              <div className="text-sm font-bold text-stone-900 truncate">{user?.email || 'Guest User'}</div>
+            </div>
 
-              <div className="p-2">
-                <Link 
-                  to="/" 
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-emerald-50 text-stone-700 hover:text-emerald-700 transition-colors"
+            <div className="p-2">
+              <Link 
+                to="/" 
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-emerald-50 text-stone-700 hover:text-emerald-700 transition-colors"
+              >
+                <MapIcon size={20} />
+                <span className="font-bold text-sm">Explore Map</span>
+              </Link>
+
+              <Link 
+                to="/favorites" 
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-rose-50 text-stone-700 hover:text-rose-700 transition-colors"
+              >
+                <Heart size={20} />
+                <span className="font-bold text-sm">Favorites</span>
+              </Link>
+
+              {user && (
+                <button 
+                  onClick={() => { toggleEditMode(); setIsOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors ${editMode ? 'bg-amber-100 text-amber-700' : 'hover:bg-amber-50 text-stone-700 hover:text-amber-700'}`}
                 >
-                  <MapIcon size={20} />
-                  <span className="font-bold text-sm">Explore Map</span>
-                </Link>
+                  <Edit2 size={20} />
+                  <span className="font-bold text-sm">{editMode ? 'Disable Edit Mode' : 'Enable Edit Mode'}</span>
+                </button>
+              )}
 
+              {isModerator && (
                 <Link 
-                  to="/favorites" 
+                  to="/moderator" 
                   onClick={() => setIsOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-rose-50 text-stone-700 hover:text-rose-700 transition-colors"
+                  className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-blue-50 text-stone-700 hover:text-blue-700 transition-colors"
                 >
-                  <Heart size={20} />
-                  <span className="font-bold text-sm">Favorites</span>
+                  <ShieldCheck size={20} />
+                  <span className="font-bold text-sm">Moderator Panel</span>
                 </Link>
+              )}
 
-                {user && (
-                  <button 
-                    onClick={() => { toggleEditMode(); setIsOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors ${editMode ? 'bg-amber-100 text-amber-700' : 'hover:bg-amber-50 text-stone-700 hover:text-amber-700'}`}
-                  >
-                    <Edit2 size={20} />
-                    <span className="font-bold text-sm">{editMode ? 'Disable Edit Mode' : 'Enable Edit Mode'}</span>
-                  </button>
-                )}
+              {isPodPage && editMode && (
+                <button 
+                  onClick={() => { onDelete?.(); setIsOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-rose-50 text-rose-600 transition-colors"
+                >
+                  <Trash2 size={20} />
+                  <span className="font-bold text-sm">Delete Pod</span>
+                </button>
+              )}
 
-                {isModerator && (
-                  <Link 
-                    to="/moderator" 
-                    onClick={() => setIsOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-blue-50 text-stone-700 hover:text-blue-700 transition-colors"
-                  >
-                    <ShieldCheck size={20} />
-                    <span className="font-bold text-sm">Moderator Panel</span>
-                  </Link>
-                )}
+              <div className="my-2 border-t border-stone-50" />
 
-                {isPodPage && editMode && (
-                  <button 
-                    onClick={() => { onDelete?.(); setIsOpen(false); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-rose-50 text-rose-600 transition-colors"
-                  >
-                    <Trash2 size={20} />
-                    <span className="font-bold text-sm">Delete Pod</span>
-                  </button>
-                )}
-
-                <div className="my-2 border-t border-stone-50" />
-
-                {user ? (
-                  <button 
-                    onClick={handleLogout}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-stone-100 text-stone-500 transition-colors"
-                  >
-                    <LogOut size={20} />
-                    <span className="font-bold text-sm">Sign Out</span>
-                  </button>
-                ) : (
-                  <Link 
-                    to="/login" 
-                    onClick={() => setIsOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-100"
-                  >
-                    <LogOut size={20} />
-                    <span className="font-bold text-sm">Sign In</span>
-                  </Link>
-                )}
-              </div>
-            </motion.div>
-          </>
+              {user ? (
+                <button 
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-stone-100 text-stone-500 transition-colors"
+                >
+                  <LogOut size={20} />
+                  <span className="font-bold text-sm">Sign Out</span>
+                </button>
+              ) : (
+                <Link 
+                  to="/login" 
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-100"
+                >
+                  <LogOut size={20} />
+                  <span className="font-bold text-sm">Sign In</span>
+                </Link>
+              )}
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
