@@ -1,5 +1,4 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import admin from "firebase-admin";
 import path from "path";
 import fs from "fs";
@@ -81,8 +80,8 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json({ limit: '50mb' }));
-  app.use(express.urlencoded({ limit: '50mb', extended: true }));
+  app.use(express.json({ limit: '5mb' }));
+  app.use(express.urlencoded({ limit: '5mb', extended: true }));
 
   const authMiddleware = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const authHeader = req.headers.authorization;
@@ -133,8 +132,8 @@ async function startServer() {
   const cleanupDeletedItems = async () => {
     try {
       const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-      const podsSnapshot = await getDb().collection("pods").where("deletedAt", "<", oneWeekAgo).get();
-      const cartsSnapshot = await getDb().collection("carts").where("deletedAt", "<", oneWeekAgo).get();
+      const podsSnapshot = await getDb().collection("pods").where("deletedAt", "<", oneWeekAgo).limit(100).get();
+      const cartsSnapshot = await getDb().collection("carts").where("deletedAt", "<", oneWeekAgo).limit(100).get();
       
       if (podsSnapshot.docs.length > 0 || cartsSnapshot.docs.length > 0) {
         const batch = getDb().batch();
@@ -173,7 +172,7 @@ async function startServer() {
 
   app.get("/api/pods", async (req, res) => {
     try {
-      const snapshot = await getDb().collection("pods").get();
+      const snapshot = await getDb().collection("pods").limit(500).get();
       let pods = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
       // Filter out the Thompson Track pod as requested
@@ -314,7 +313,7 @@ async function startServer() {
 
   app.get("/api/carts", async (req, res) => {
     try {
-      const snapshot = await getDb().collection("carts").get();
+      const snapshot = await getDb().collection("carts").limit(1000).get();
       let carts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       if (req.query.includeDeleted !== 'true') {
         carts = carts.filter((c: any) => !c.deletedAt);
@@ -500,6 +499,7 @@ async function startServer() {
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",

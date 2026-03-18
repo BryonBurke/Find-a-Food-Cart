@@ -1,24 +1,40 @@
-# Use a lightweight Node.js environment
-FROM node:20-alpine
+# Stage 1: Build
+FROM node:22-alpine AS builder
 
-# Set the working directory inside the container
 WORKDIR /app
 
-# Copy your package files first (this makes builds faster)
+# Copy package files
 COPY package*.json ./
 
-# Install all dependencies
+# Install ALL dependencies (including devDependencies)
 RUN npm install
 
-# Copy the rest of your application code
+# Copy source code
 COPY . .
 
-# Set the environment to production so the server uses the built files
-ENV NODE_ENV=production
+# Build the application
+# We use a lower heap limit to stay within Render's 512MB limit
+RUN NODE_OPTIONS=--max-old-space-size=384 npm run build
 
-# Expose the port your Express server runs on
+# Stage 2: Runtime
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install only production dependencies
+RUN npm install --omit=dev
+
+# Copy built assets from builder
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/dist-server ./dist-server
+
+# Set environment
+ENV NODE_ENV=production
 EXPOSE 3000
 
-# Build the Vite frontend at runtime so it has access to Render's environment variables
-# (Render does not pass dashboard environment variables to the Docker build step)
-CMD npm run build && npx tsx server.ts
+# Start the server
+# Using the compiled JS for maximum memory efficiency
+CMD ["npm", "start"]
