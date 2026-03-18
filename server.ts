@@ -105,7 +105,6 @@ async function startServer() {
     if (!obj) return obj;
     const copy = { ...obj };
     if (copy.imageUrl) copy.imageUrl = '[IMAGE DATA]';
-    if (copy.gallery) copy.gallery = '[GALLERY DATA]';
     if (copy.menuGallery) copy.menuGallery = '[MENU GALLERY DATA]';
     return copy;
   };
@@ -233,7 +232,10 @@ async function startServer() {
       const data = { name, description, latitude, longitude };
       
       const oldDoc = await getDb().collection("pods").doc(req.params.id).get();
-      const oldData = oldDoc.exists ? oldDoc.data() : null;
+      if (!oldDoc.exists) {
+        return res.status(404).json({ error: "Pod not found" });
+      }
+      const oldData = oldDoc.data();
 
       await getDb().collection("pods").doc(req.params.id).update(data);
       await logAction((req as any).user.email || 'Unknown User', 'Updated Pod', `Pod: ${name}`, { old: stripImages(oldData), new: stripImages(data) }, req.params.id, 'pods');
@@ -342,13 +344,16 @@ async function startServer() {
 
   app.post("/api/carts", authMiddleware, async (req, res) => {
     try {
-      const { podId, name, cuisine, description, imageUrl, gallery, menuGallery, tags, instagramUrl, websiteUrl, rating, latitude, longitude, openTime, closeTime } = req.body;
-      const data: any = { podId, name, cuisine, description, imageUrl, gallery, menuGallery, instagramUrl, websiteUrl, rating };
+      const { podId, name, description, imageUrl, menuGallery, tags, instagramUrl, websiteUrl, rating, latitude, longitude, openTime, closeTime } = req.body;
+      const data: any = { podId, name, description, imageUrl, menuGallery, instagramUrl, websiteUrl, rating };
       if (tags !== undefined) data.tags = tags;
       if (latitude !== undefined) data.latitude = latitude;
       if (longitude !== undefined) data.longitude = longitude;
       if (openTime !== undefined) data.openTime = openTime;
       if (closeTime !== undefined) data.closeTime = closeTime;
+      
+      // Remove undefined values
+      Object.keys(data).forEach(key => data[key] === undefined && delete data[key]);
       
       const docRef = await getDb().collection("carts").add(data);
       await logAction((req as any).user.email || 'Unknown User', 'Created Cart', `Cart: ${name}`, { added: stripImages(data) }, docRef.id, 'carts');
@@ -360,17 +365,24 @@ async function startServer() {
   });
 
   app.put("/api/carts/:id", authMiddleware, async (req, res) => {
+    console.log(`Server: Received request to update cart ${req.params.id}`);
     try {
-      const { name, cuisine, description, imageUrl, gallery, menuGallery, tags, instagramUrl, websiteUrl, rating, latitude, longitude, openTime, closeTime } = req.body;
-      const data: any = { name, cuisine, description, imageUrl, gallery, menuGallery, instagramUrl, websiteUrl, rating };
+      const { name, description, imageUrl, menuGallery, tags, instagramUrl, websiteUrl, rating, latitude, longitude, openTime, closeTime } = req.body;
+      const data: any = { name, description, imageUrl, menuGallery, instagramUrl, websiteUrl, rating };
       if (tags !== undefined) data.tags = tags;
       if (latitude !== undefined) data.latitude = latitude;
       if (longitude !== undefined) data.longitude = longitude;
       if (openTime !== undefined) data.openTime = openTime;
       if (closeTime !== undefined) data.closeTime = closeTime;
       
+      // Remove undefined values
+      Object.keys(data).forEach(key => data[key] === undefined && delete data[key]);
+      
       const oldDoc = await getDb().collection("carts").doc(req.params.id).get();
-      const oldData = oldDoc.exists ? oldDoc.data() : null;
+      if (!oldDoc.exists) {
+        return res.status(404).json({ error: "Cart not found" });
+      }
+      const oldData = oldDoc.data();
 
       if (oldData?.ownerEmail && oldData.ownerEmail !== (req as any).user.email?.toLowerCase() && (req as any).user.email?.toLowerCase() !== 'bryonparis@gmail.com') {
         return res.status(403).json({ error: "Only the cart owner can edit this cart." });

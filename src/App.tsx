@@ -41,9 +41,9 @@ function AppRoutes() {
           <Route path="/pod/:id" element={<PodPage />} />
           <Route path="/pod/:id/edit" element={user ? <PodForm /> : <Navigate to="/login" />} />
           <Route path="/pod/:id/map" element={<PodMapPage />} />
-          <Route path="/pod/:id/cart/new" element={user ? <CartForm /> : <Navigate to="/login" />} />
+          <Route path="/pod/:podId/cart/new" element={user ? <CartForm /> : <Navigate to="/login" />} />
           <Route path="/cart/:id" element={<CartPage />} />
-          <Route path="/cart/:id/edit" element={user ? <CartForm /> : <Navigate to="/login" />} />
+          <Route path="/cart/:cartId/edit" element={user ? <CartForm /> : <Navigate to="/login" />} />
           <Route path="/cart/:id/claim" element={user ? <CartOwnerPage /> : <Navigate to="/login" />} />
           <Route path="/carts" element={<CartListPage />} />
           <Route path="/favorites" element={<FavoritesPage />} />

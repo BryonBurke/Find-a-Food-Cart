@@ -22,9 +22,9 @@ export function TutorialOverlay() {
       case 'CLICK_ADD_POD':
         if (location.pathname !== '/') return null;
         return {
-          text: "Click 'Add Pod' to start creating your pod.",
-          position: "top-48 right-72",
-          arrow: "absolute top-1/2 -translate-y-1/2 -right-2 w-0 h-0 border-t-[8px] border-b-[8px] border-l-[8px] border-t-transparent border-b-transparent border-l-white",
+          text: "Make an account, log in, and ensure the edit mode is on, then click the 'Add Pod' button.",
+          position: "top-24 right-4",
+          arrow: "hidden",
         };
       case 'CLICK_MAP':
         if (location.pathname !== '/') return null;

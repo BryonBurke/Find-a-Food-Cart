@@ -5,11 +5,13 @@ import { ChevronLeft, ChevronRight, X, Heart, FileText, MapPin, Edit2, Trash2, P
 import { Pod, Cart } from '../types';
 import { useAuth } from '../AuthContext';
 import { useEditMode } from '../EditModeContext';
+import { useTutorial } from '../TutorialContext';
 import { isCartOpen } from '../utils';
 
 export default function PodPage() {
   const { user } = useAuth();
   const { editMode } = useEditMode();
+  const { nextStep } = useTutorial();
   const { id } = useParams();
   const navigate = useNavigate();
   const [pod, setPod] = useState<Pod | null>(null);
@@ -232,7 +234,6 @@ export default function PodPage() {
               <div className="p-6 border-b border-stone-100 flex justify-between items-center bg-stone-50">
                 <div>
                   <h2 className="text-2xl font-bold text-stone-900">{selectedCartForMenu.name} Menu</h2>
-                  <p className="text-stone-500 text-sm">{selectedCartForMenu.cuisine}</p>
                 </div>
                 <button 
                   onClick={() => setSelectedCartForMenu(null)}
@@ -417,7 +418,10 @@ export default function PodPage() {
           {editMode && user && (
             <div className="flex gap-2 mr-2">
               <button 
-                onClick={() => navigate(`/pod/${pod.id}/cart/new`)}
+                onClick={() => {
+                  nextStep('CLICK_ADD_CART', 'FILL_CART_FORM');
+                  navigate(`/pod/${pod.id}/cart/new`);
+                }}
                 className="bg-emerald-600 text-white p-2 rounded-xl shadow-lg hover:bg-emerald-500 transition-colors flex items-center gap-2 text-xs font-bold"
                 title="Add Cart"
               >
@@ -458,9 +462,6 @@ export default function PodPage() {
                   referrerPolicy="no-referrer"
                 />
                 <div className="absolute top-4 right-4 flex gap-2">
-                  <span className="bg-white px-3 py-1 rounded-full text-xs font-bold text-black shadow-sm uppercase tracking-wider">
-                    {cart.cuisine}
-                  </span>
                   {isCartOpen(cart.openTime, cart.closeTime) && (
                     <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm uppercase tracking-wider flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span> Open
@@ -474,8 +475,8 @@ export default function PodPage() {
                       return (
                         <div className="absolute bottom-2 left-2 flex flex-wrap gap-1">
                           {tags.slice(0, 3).map((t, i) => (
-                            <span key={i} className="bg-black/60 backdrop-blur-sm text-white px-2 py-0.5 rounded text-[10px] font-mono font-bold border border-white/20">
-                              {typeof t === 'string' ? t.toUpperCase() : (t.name || t.tag).toUpperCase()}
+                            <span key={i} className="bg-black/60 backdrop-blur-sm text-white px-2 py-0.5 rounded text-[10px] font-mono font-bold border border-white/20" title={t.name}>
+                              {typeof t === 'string' ? t.toUpperCase() : (t.tag || t.name).toUpperCase()}
                             </span>
                           ))}
                         </div>

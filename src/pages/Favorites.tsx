@@ -80,7 +80,23 @@ export function Favorites() {
             </div>
 
             <div className="p-6 flex-1 flex flex-col">
-              <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-3">{cart.cuisine}</p>
+              {(() => {
+                try {
+                  const tags = typeof cart.tags === 'string' ? JSON.parse(cart.tags || '[]') : (Array.isArray(cart.tags) ? cart.tags : []);
+                  if (Array.isArray(tags) && tags.length > 0) {
+                    return (
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {tags.slice(0, 3).map((t, i) => (
+                          <span key={i} className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded text-[10px] font-mono font-bold border border-stone-200" title={t.name}>
+                            {typeof t === 'string' ? t.toUpperCase() : (t.tag || t.name).toUpperCase()}
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  }
+                } catch (e) {}
+                return null;
+              })()}
               <p className="text-stone-500 text-sm line-clamp-2 mb-6 flex-1">{cart.description}</p>
               
               <div className="grid grid-cols-2 gap-3">

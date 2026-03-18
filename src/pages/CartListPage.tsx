@@ -134,7 +134,23 @@ export default function CartListPage() {
                     <h3 className="font-bold text-stone-900 group-hover:text-emerald-600 transition-colors">
                       {cart.name}
                     </h3>
-                    <p className="text-sm text-stone-500">{cart.cuisine}</p>
+                    {(() => {
+                      try {
+                        const tags = typeof cart.tags === 'string' ? JSON.parse(cart.tags || '[]') : (Array.isArray(cart.tags) ? cart.tags : []);
+                        if (Array.isArray(tags) && tags.length > 0) {
+                          return (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {tags.slice(0, 3).map((t, i) => (
+                                <span key={i} className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded text-[10px] font-mono font-bold border border-stone-200" title={t.name}>
+                                  {typeof t === 'string' ? t.toUpperCase() : (t.tag || t.name).toUpperCase()}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        }
+                      } catch (e) {}
+                      return null;
+                    })()}
                   </div>
                 </div>
                 <div className="text-right">

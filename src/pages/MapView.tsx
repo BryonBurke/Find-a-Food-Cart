@@ -438,7 +438,10 @@ export default function MapView() {
           {tempMarker && (
             <AdvancedMarker 
               position={{ lat: tempMarker[0], lng: tempMarker[1] }}
-              onClick={() => navigate(`/pod/new?lat=${tempMarker[0]}&lng=${tempMarker[1]}`)}
+              onClick={() => {
+                nextStep('CLICK_POD_PIN', 'FILL_POD_FORM');
+                navigate(`/pod/new?lat=${tempMarker[0]}&lng=${tempMarker[1]}`);
+              }}
             >
               <div className="relative flex flex-col items-center cursor-pointer group z-10">
                 <div className="absolute bottom-full mb-1 bg-stone-900/90 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-xl border border-stone-700 whitespace-nowrap text-sm font-bold text-white pointer-events-none hidden group-hover:block z-[100]">

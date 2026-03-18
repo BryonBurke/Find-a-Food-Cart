@@ -4,11 +4,12 @@ import {
   ChevronLeft, Utensils, Search, Menu, X, Heart, 
   Map as MapIcon, List, Edit2, Trash2, Info, 
   ExternalLink, LogOut, ShieldCheck, Star, Plus,
-  Navigation
+  Navigation, Play
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../AuthContext';
 import { useEditMode } from '../EditModeContext';
+import { useTutorial } from '../TutorialContext';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { Cart } from '../types';
@@ -16,9 +17,16 @@ import { Cart } from '../types';
 export function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPage?: boolean, podId?: string, onDelete?: () => void }) {
   const { user } = useAuth();
   const { editMode, toggleEditMode } = useEditMode();
+  const { startTutorial, step, nextStep } = useTutorial();
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const menuRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen && step === 'OPEN_MENU') {
+      nextStep('OPEN_MENU', 'CLICK_ADD_POD');
+    }
+  }, [isOpen, step, nextStep]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -68,15 +76,6 @@ export function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPag
 
             <div className="p-2">
               <Link 
-                to="/" 
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-emerald-50 text-stone-700 hover:text-emerald-700 transition-colors"
-              >
-                <MapIcon size={20} />
-                <span className="font-bold text-sm">Explore Map</span>
-              </Link>
-
-              <Link 
                 to="/carts" 
                 onClick={() => setIsOpen(false)}
                 className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-emerald-50 text-stone-700 hover:text-emerald-700 transition-colors"
@@ -103,6 +102,28 @@ export function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPag
                   <span className="font-bold text-sm">{editMode ? 'Disable Edit Mode' : 'Enable Edit Mode'}</span>
                 </button>
               )}
+
+              {user && (
+                <button 
+                  onClick={() => { 
+                    navigate('/?mode=add'); 
+                    setIsOpen(false); 
+                    nextStep('CLICK_ADD_POD', 'CLICK_MAP');
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-emerald-50 text-stone-700 hover:text-emerald-700 transition-colors"
+                >
+                  <Plus size={20} />
+                  <span className="font-bold text-sm">Add Pod</span>
+                </button>
+              )}
+
+              <button 
+                onClick={() => { startTutorial(); setIsOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-emerald-50 text-stone-700 hover:text-emerald-700 transition-colors"
+              >
+                <Play size={20} />
+                <span className="font-bold text-sm">Add Cart Tutorial</span>
+              </button>
 
               {isModerator && (
                 <Link 
@@ -164,12 +185,17 @@ export function Header() {
   const [carts, setCarts] = useState<Cart[]>([]);
   
   useEffect(() => {
-    fetch('/api/carts')
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) setCarts(data);
-      })
-      .catch(console.error);
+    const loadCarts = () => {
+      fetch('/api/carts')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) setCarts(data);
+        })
+        .catch(console.error);
+    };
+    loadCarts();
+    window.addEventListener('carts-updated', loadCarts);
+    return () => window.removeEventListener('carts-updated', loadCarts);
   }, []);
 
   const availableTags = useMemo(() => {

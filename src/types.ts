@@ -12,12 +12,10 @@ export interface Cart {
   id: string;
   podId: string;
   name: string;
-  cuisine: string;
   description: string;
   imageUrl?: string;
-  gallery?: string; // JSON stringified array of URLs
   menuGallery?: string; // JSON stringified array of URLs
-  tags?: string; // JSON stringified array of 5-letter strings
+  tags?: string; // JSON stringified array of {name: string, tag: string}
   instagramUrl?: string;
   websiteUrl?: string;
   rating: number;

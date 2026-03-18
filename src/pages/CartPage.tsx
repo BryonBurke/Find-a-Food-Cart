@@ -112,19 +112,7 @@ export default function CartPage() {
   if (loading) return <div className="p-8 text-center">Loading cart details...</div>;
   if (!cart || cart.error) return <div className="p-8 text-center">Cart not found</div>;
 
-  let gallery: string[] = [];
   let menuGallery: string[] = [];
-  try {
-    if (cart.gallery && typeof cart.gallery === 'string' && cart.gallery.trim() !== '') {
-      gallery = JSON.parse(cart.gallery);
-    } else if (Array.isArray(cart.gallery)) {
-      gallery = cart.gallery;
-    }
-    if (!Array.isArray(gallery)) gallery = [];
-  } catch (e) {
-    console.error("Failed to parse gallery JSON", e);
-    gallery = [];
-  }
   try {
     if (cart.menuGallery && typeof cart.menuGallery === 'string' && cart.menuGallery.trim() !== '') {
       menuGallery = JSON.parse(cart.menuGallery);
@@ -252,9 +240,6 @@ export default function CartPage() {
           <div className="flex justify-between items-end">
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <span className="inline-block px-3 py-1 bg-emerald-500 text-white text-xs font-bold rounded-full uppercase tracking-widest">
-                  {cart.cuisine}
-                </span>
                 {isCartOpen(cart.openTime, cart.closeTime) && (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full uppercase tracking-widest shadow-lg">
                     <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span> Open
@@ -269,8 +254,8 @@ export default function CartPage() {
                     return (
                       <div className="flex flex-wrap gap-2 mb-4">
                         {tags.map((t: any, i: number) => (
-                          <span key={i} className="bg-white/20 backdrop-blur-sm text-white px-3 py-1 rounded-lg text-xs font-mono font-bold border border-white/10">
-                            {typeof t === 'string' ? t.toUpperCase() : (t.name || t.tag).toUpperCase()}
+                          <span key={i} className="bg-white/20 backdrop-blur-sm text-white px-3 py-1 rounded-lg text-xs font-mono font-bold border border-white/10" title={t.name}>
+                            {typeof t === 'string' ? t.toUpperCase() : (t.tag || t.name).toUpperCase()}
                           </span>
                         ))}
                       </div>
@@ -312,21 +297,6 @@ export default function CartPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
         <div className="md:col-span-2 space-y-8">
-          {gallery.length > 0 && (
-            <section>
-              <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-                <Camera size={24} className="text-emerald-600" /> Gallery
-              </h2>
-              <div className="grid grid-cols-2 gap-4">
-                {gallery.map((url: string, idx: number) => (
-                  <div key={idx} className="aspect-[3/4] rounded-2xl overflow-hidden shadow-md hover:scale-[1.02] transition-transform cursor-pointer">
-                    <img src={url} alt={`Gallery ${idx}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
           <div className="space-y-8">
             {cart.description && (
               <section className="bg-white rounded-3xl p-8 shadow-sm border border-stone-100">

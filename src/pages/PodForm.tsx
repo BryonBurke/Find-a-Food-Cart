@@ -3,11 +3,13 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 import { Pod } from '../types';
 import { useAuth } from '../AuthContext';
+import { useTutorial } from '../TutorialContext';
 import { VoiceInput } from '../components/VoiceInput';
 import { checkContentSafety } from '../utils';
 
 export default function PodForm() {
   const { user } = useAuth();
+  const { nextStep } = useTutorial();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -68,6 +70,9 @@ export default function PodForm() {
       if (res.ok) {
         const data = await res.json();
         const podId = isEdit ? id : data.id;
+        if (!isEdit) {
+          nextStep('FILL_POD_FORM', 'CLICK_ADD_CART');
+        }
         navigate(`/pod/${podId}`);
       } else {
         const data = await res.json();
