@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, Star, Map as MapIcon, Navigation, Camera, Info, Globe, Instagram, FileText, X, Edit2, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, Map as MapIcon, Navigation, Camera, Info, Globe, Instagram, FileText, X, Edit2, Trash2 } from 'lucide-react';
 import { Pod, Cart } from '../types';
 import { useAuth } from '../AuthContext';
 import { useEditMode } from '../EditModeContext';
@@ -16,7 +16,7 @@ export default function CartPage() {
   const [pod, setPod] = useState<Pod | null>(null);
   const [podCarts, setPodCarts] = useState<Cart[]>([]);
   const [loading, setLoading] = useState(true);
-  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [fullscreenImageIndex, setFullscreenImageIndex] = useState<number | null>(null);
   const [isFavoriting, setIsFavoriting] = useState(false);
 
   useEffect(() => {
@@ -191,7 +191,7 @@ export default function CartPage() {
         <button onClick={() => {
           if (cart?.podId) {
             if (podCarts.length <= 1) {
-              navigate(`/pod/${cart.podId}/map`);
+              navigate('/');
             } else {
               navigate(-1);
             }
@@ -382,7 +382,7 @@ export default function CartPage() {
                   <div 
                     key={idx} 
                     className="rounded-xl overflow-hidden shadow-sm border border-stone-100 cursor-pointer hover:opacity-90 transition-opacity aspect-[3/4]"
-                    onClick={() => setFullscreenImage(url)}
+                    onClick={() => setFullscreenImageIndex(idx)}
                   >
                     <img src={url} alt={`Menu ${idx}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   </div>
@@ -404,22 +404,46 @@ export default function CartPage() {
         </div>
       </div>
 
-      {fullscreenImage && (
+      {fullscreenImageIndex !== null && (
         <div 
           className="fixed inset-0 z-[4000] bg-black flex items-center justify-center p-4 cursor-pointer"
-          onClick={() => setFullscreenImage(null)}
+          onClick={() => setFullscreenImageIndex(null)}
         >
           <button 
             className="absolute top-[150px] right-4 bg-black text-white p-2 rounded-full shadow-lg transition-colors z-[5001]"
             onClick={(e) => {
               e.stopPropagation();
-              setFullscreenImage(null);
+              setFullscreenImageIndex(null);
             }}
           >
             <X size={32} />
           </button>
+
+          {menuGallery.length > 1 && (
+            <>
+              <button 
+                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black text-white p-4 rounded-full shadow-lg transition-colors z-[5001]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFullscreenImageIndex((prev) => (prev! - 1 + menuGallery.length) % menuGallery.length);
+                }}
+              >
+                <ChevronLeft size={48} />
+              </button>
+              <button 
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black text-white p-4 rounded-full shadow-lg transition-colors z-[5001]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFullscreenImageIndex((prev) => (prev! + 1) % menuGallery.length);
+                }}
+              >
+                <ChevronRight size={48} />
+              </button>
+            </>
+          )}
+
           <img 
-            src={fullscreenImage} 
+            src={menuGallery[fullscreenImageIndex]} 
             alt="Fullscreen Menu" 
             className="max-w-full max-h-full object-contain rounded-lg"
             referrerPolicy="no-referrer"

@@ -291,13 +291,13 @@ export default function PodPage() {
             {menuGallery.length > 1 && (
               <>
                 <button 
-                  className="absolute left-4 text-white p-4 hover:bg-white/20 rounded-full transition-colors z-[5001]"
+                  className="absolute left-4 bg-black text-white p-4 rounded-full shadow-lg transition-colors z-[5001]"
                   onClick={(e) => { e.stopPropagation(); setMenuSlideshowIndex((prev) => (prev! - 1 + menuGallery.length) % menuGallery.length); }}
                 >
                   <ChevronLeft size={48} />
                 </button>
                 <button 
-                  className="absolute right-4 text-white p-4 hover:bg-white/20 rounded-full transition-colors z-[5001]"
+                  className="absolute right-4 bg-black text-white p-4 rounded-full shadow-lg transition-colors z-[5001]"
                   onClick={(e) => { e.stopPropagation(); setMenuSlideshowIndex((prev) => (prev! + 1) % menuGallery.length); }}
                 >
                   <ChevronRight size={48} />
@@ -334,13 +334,13 @@ export default function PodPage() {
               {carts.length > 1 && (
                 <>
                   <button 
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-white p-4 hover:bg-white/20 rounded-full transition-colors z-[5001]"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-black text-white p-4 rounded-full shadow-lg transition-colors z-[5001]"
                     onClick={(e) => { e.stopPropagation(); setSlideshowIndex((prev) => (prev! - 1 + carts.length) % carts.length); }}
                   >
                     <ChevronLeft size={48} />
                   </button>
                   <button 
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white p-4 hover:bg-white/20 rounded-full transition-colors z-[5001]"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-black text-white p-4 rounded-full shadow-lg transition-colors z-[5001]"
                     onClick={(e) => { e.stopPropagation(); setSlideshowIndex((prev) => (prev! + 1) % carts.length); }}
                   >
                     <ChevronRight size={48} />
