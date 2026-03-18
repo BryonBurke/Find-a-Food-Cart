@@ -4,7 +4,7 @@
  */
 /// <reference types="vite/client" />
 
-import React, { useState, useEffect, FormEvent, ChangeEvent, MouseEvent, useMemo, useCallback, createContext, useContext } from 'react';
+import React, { useState, useEffect, FormEvent, ChangeEvent, MouseEvent, useMemo, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { APIProvider, Map as GoogleMap, AdvancedMarker, Pin, useMap, useMapsLibrary } from '@vis.gl/react-google-maps';
 import { MapPin, Plus, Edit2, Trash2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Utensils, Info, Camera, Star, Instagram, Globe, FileText, ExternalLink, Navigation, X, Clock, Map as MapIcon, List, Play, Square, Search, Menu, Heart, Mic, File } from 'lucide-react';
@@ -448,7 +448,8 @@ function MapView() {
   const [carts, setCarts] = useState<Cart[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const searchTag = searchParams.get('tag') || '';
-  const { userLocation } = useUserLocation();
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [isWatchingLocation, setIsWatchingLocation] = useState(true);
   const isAddingPod = searchParams.get('mode') === 'add' && user;
   const navToId = searchParams.get('navTo');
   const [tempMarker, setTempMarker] = useState<[number, number] | null>(null);
@@ -642,6 +643,26 @@ function MapView() {
     fetchPods();
     fetchCarts();
   }, []);
+
+  useEffect(() => {
+    if (!isWatchingLocation) return;
+    let lastLoc: [number, number] | null = null;
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const newLoc: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+        if (!lastLoc || getDistance(lastLoc[0], lastLoc[1], newLoc[0], newLoc[1]) > 5) {
+          lastLoc = newLoc;
+          setUserLocation(newLoc);
+        }
+      },
+      (err) => {
+        console.warn("Geolocation error:", err);
+        setUserLocation(prev => prev || [45.5946, -121.1787]);
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 5000 }
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [isWatchingLocation]);
 
   useEffect(() => {
     const handleLocate = () => {
@@ -1013,6 +1034,7 @@ function MapView() {
               <button 
                 onClick={() => {
                   setNavState(prev => ({ ...prev, isActive: true }));
+                  setIsWatchingLocation(true);
                 }}
                 className="w-full bg-emerald-600 text-white py-4 rounded-xl font-black hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 text-lg shadow-lg shadow-emerald-200"
               >
@@ -3623,12 +3645,6 @@ function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPage?: boo
   const isModerator = user?.email?.toLowerCase().trim() === 'bryonparis@gmail.com';
   const [isZoomedIn, setIsZoomedIn] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [distance, setDistance] = useState('5');
-
-  const handleNearbySearch = () => {
-    setMenuOpen(false);
-    navigate(`/carts-nearby?distance=${distance}`);
-  };
 
   useEffect(() => {
     const handleLocate = () => setIsZoomedIn(true);
@@ -3680,31 +3696,6 @@ function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPage?: boo
             >
               <Search size={16} /> Search for Cart
             </button>
-
-            <div className="px-4 py-3 border-b border-stone-100 flex flex-col gap-2">
-              <label className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Nearby Search</label>
-              <div className="flex items-center gap-2">
-                <select 
-                  value={distance}
-                  onChange={(e) => setDistance(e.target.value)}
-                  className="flex-1 bg-stone-50 border border-stone-200 rounded-lg px-2 py-1.5 text-sm font-semibold text-stone-700 outline-none focus:ring-2 focus:ring-emerald-500/20"
-                >
-                  <option value="1">1 mile</option>
-                  <option value="2">2 miles</option>
-                  <option value="5">5 miles</option>
-                  <option value="10">10 miles</option>
-                  <option value="25">25 miles</option>
-                  <option value="50">50 miles</option>
-                </select>
-                <button 
-                  onClick={handleNearbySearch}
-                  className="bg-emerald-600 text-white p-2 rounded-lg hover:bg-emerald-500 transition-colors shadow-sm"
-                  title="List nearby carts"
-                >
-                  <List size={16} />
-                </button>
-              </div>
-            </div>
 
             {isHome && user && (
               <button 
@@ -3977,18 +3968,7 @@ function Header() {
                 value={cartSearch}
                 onChange={e => setCartSearch(e.target.value)}
                 onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    const query = cartSearch.toUpperCase();
-                    if (query) {
-                      const match = carts.find(c => c.name.toUpperCase().includes(query));
-                      if (match) {
-                        navigate(`/cart/${match.id}`);
-                        setIsCartSearching(false);
-                        setCartSearch('');
-                      }
-                    }
-                    setIsCartSearching(false);
-                  }
+                  if (e.key === 'Enter') setIsCartSearching(false);
                 }}
               />
             </div>
@@ -4058,36 +4038,6 @@ function Header() {
       </div>
     </header>
   );
-}
-
-const LocationContext = createContext<{ userLocation: [number, number] | null }>({ userLocation: null });
-
-function LocationProvider({ children }: { children: React.ReactNode }) {
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-
-  useEffect(() => {
-    if (!navigator.geolocation) return;
-    
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        setUserLocation([pos.coords.latitude, pos.coords.longitude]);
-      },
-      (err) => console.error(err),
-      { enableHighAccuracy: true }
-    );
-    
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, []);
-
-  return (
-    <LocationContext.Provider value={{ userLocation }}>
-      {children}
-    </LocationContext.Provider>
-  );
-}
-
-function useUserLocation() {
-  return useContext(LocationContext);
 }
 
 function PermissionsGate({ children }: { children: React.ReactNode }) {
@@ -4462,162 +4412,38 @@ function FavoritesPage() {
 import { TutorialProvider } from './TutorialContext';
 import { TutorialOverlay } from './TutorialOverlay';
 
-function CartsNearbyPage() {
-  const [searchParams] = useSearchParams();
-  const distanceLimit = parseFloat(searchParams.get('distance') || '5');
-  const [carts, setCarts] = useState<Cart[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { userLocation } = useUserLocation();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const fetchCarts = async () => {
-      try {
-        const res = await fetch('/api/carts');
-        const data = await res.json();
-        setCarts(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCarts();
-  }, []);
-
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 3958.8; // Earth radius in miles
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  };
-
-  const nearbyCarts = useMemo(() => {
-    if (!userLocation) return [];
-    return carts
-      .filter(cart => cart.latitude && cart.longitude)
-      .map(cart => {
-        let gallery: string[] = [];
-        try {
-          if (cart.gallery && typeof cart.gallery === 'string') {
-            gallery = JSON.parse(cart.gallery);
-          } else if (Array.isArray(cart.gallery)) {
-            gallery = cart.gallery;
-          }
-        } catch(e) {}
-        
-        return {
-          ...cart,
-          gallery: gallery,
-          distance: calculateDistance(userLocation[0], userLocation[1], cart.latitude!, cart.longitude!)
-        };
-      })
-      .filter(cart => cart.distance <= distanceLimit)
-      .sort((a, b) => a.distance - b.distance);
-  }, [carts, userLocation, distanceLimit]);
-
-  if (loading) return <div className="p-8 text-center">Finding carts nearby...</div>;
-  if (!userLocation) return <div className="p-8 text-center">Please enable location to see nearby carts.</div>;
-
-  return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="max-w-4xl mx-auto p-4 pb-24"
-    >
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-black text-stone-900">Nearby Carts</h1>
-          <p className="text-stone-500 font-medium">Within {distanceLimit} miles of your location</p>
-        </div>
-        <div className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-full font-bold text-sm">
-          {nearbyCarts.length} Carts Found
-        </div>
-      </div>
-
-      {nearbyCarts.length === 0 ? (
-        <div className="bg-stone-50 rounded-3xl p-12 text-center border-2 border-dashed border-stone-200">
-          <div className="bg-stone-200 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <MapPin className="text-stone-400" size={32} />
-          </div>
-          <h3 className="text-xl font-bold text-stone-900 mb-2">No carts found nearby</h3>
-          <p className="text-stone-500 max-w-xs mx-auto">Try increasing the search distance in the menu.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {nearbyCarts.map(cart => (
-            <motion.div
-              key={cart.id}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => navigate(`/cart/${cart.id}`)}
-              className="bg-white rounded-2xl p-4 shadow-md border border-stone-100 cursor-pointer flex gap-4 items-center"
-            >
-              <div className="w-16 h-16 bg-stone-100 rounded-xl flex-shrink-0 overflow-hidden">
-                {Array.isArray(cart.gallery) && cart.gallery[0] ? (
-                  <img src={cart.gallery[0]} alt={cart.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-stone-400">
-                    <Utensils size={24} />
-                  </div>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="font-bold text-stone-900 truncate">{cart.name}</h3>
-                <div className="flex items-center gap-2 text-stone-500 text-xs font-medium">
-                  <Navigation size={12} className="text-emerald-600" />
-                  <span>{cart.distance.toFixed(1)} miles away</span>
-                </div>
-              </div>
-              <ChevronRight size={20} className="text-stone-300" />
-            </motion.div>
-          ))}
-        </div>
-      )}
-    </motion.div>
-  );
-}
-
 export default function App() {
   return (
     <PermissionsGate>
-      <LocationProvider>
-        <AuthProvider>
-          <EditModeProvider>
-            <Router>
-              <TutorialProvider>
-                <div className="h-screen flex flex-col overflow-hidden">
-                  <Header />
-                  <TutorialOverlay />
-                  {/* Main Content */}
-                  <main className="flex-1 relative overflow-y-auto">
-                    <Routes>
-                      <Route path="/" element={<MapView />} />
-                      <Route path="/login" element={<Login />} />
-                      <Route path="/pod/new" element={<PodForm />} />
-                      <Route path="/pod/:id" element={<PodPage />} />
-                      <Route path="/pod/:id/edit" element={<PodForm />} />
-                      <Route path="/pod/:id/map" element={<PodMapPage />} />
-                      <Route path="/pod/:podId/cart/new" element={<CartForm />} />
-                      <Route path="/cart/:id" element={<CartPage />} />
-                      <Route path="/cart/:id/owner" element={<CartOwnerPage />} />
-                      <Route path="/cart/:id/edit" element={<CartForm />} />
-                      <Route path="/moderator" element={<ModeratorPage />} />
-                      <Route path="/favorites" element={<FavoritesPage />} />
-                      <Route path="/carts-nearby" element={<CartsNearbyPage />} />
-                    </Routes>
-                  </main>
-                </div>
-              </TutorialProvider>
-            </Router>
-          </EditModeProvider>
-        </AuthProvider>
-      </LocationProvider>
+      <AuthProvider>
+        <EditModeProvider>
+          <Router>
+            <TutorialProvider>
+              <div className="h-screen flex flex-col overflow-hidden">
+                <Header />
+                <TutorialOverlay />
+                {/* Main Content */}
+                <main className="flex-1 relative overflow-y-auto">
+                  <Routes>
+                    <Route path="/" element={<MapView />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/pod/new" element={<PodForm />} />
+                    <Route path="/pod/:id" element={<PodPage />} />
+                    <Route path="/pod/:id/edit" element={<PodForm />} />
+                    <Route path="/pod/:id/map" element={<PodMapPage />} />
+                    <Route path="/pod/:podId/cart/new" element={<CartForm />} />
+                    <Route path="/cart/:id" element={<CartPage />} />
+                    <Route path="/cart/:id/owner" element={<CartOwnerPage />} />
+                    <Route path="/cart/:id/edit" element={<CartForm />} />
+                    <Route path="/moderator" element={<ModeratorPage />} />
+                    <Route path="/favorites" element={<FavoritesPage />} />
+                  </Routes>
+                </main>
+              </div>
+            </TutorialProvider>
+          </Router>
+        </EditModeProvider>
+      </AuthProvider>
     </PermissionsGate>
   );
 }
