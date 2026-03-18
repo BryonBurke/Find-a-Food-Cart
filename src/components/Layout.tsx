@@ -3,7 +3,8 @@ import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-do
 import { 
   ChevronLeft, Utensils, Search, Menu, X, Heart, 
   Map as MapIcon, List, Edit2, Trash2, Info, 
-  ExternalLink, LogOut, ShieldCheck, Star, Plus
+  ExternalLink, LogOut, ShieldCheck, Star, Plus,
+  Navigation
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../AuthContext';
@@ -73,6 +74,15 @@ export function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPag
               >
                 <MapIcon size={20} />
                 <span className="font-bold text-sm">Explore Map</span>
+              </Link>
+
+              <Link 
+                to="/carts" 
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-emerald-50 text-stone-700 hover:text-emerald-700 transition-colors"
+              >
+                <Navigation size={20} />
+                <span className="font-bold text-sm">Cart List</span>
               </Link>
 
               <Link 

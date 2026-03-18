@@ -277,13 +277,13 @@ export default function PodPage() {
             onClick={() => setMenuSlideshowIndex(null)}
           >
           <button 
-            className="absolute top-[150px] right-4 text-white p-2 hover:bg-white/20 rounded-full transition-colors z-[5001]"
+            className="absolute top-[150px] right-4 bg-black text-white p-2 rounded-full shadow-lg transition-colors z-[5001]"
             onClick={() => { setMenuSlideshowIndex(null); setSelectedCartForMenu(null); }}
           >
             <X size={32} />
           </button>
           <button 
-            className="absolute top-[150px] left-4 text-white px-4 py-2 hover:bg-white/20 rounded-full transition-colors z-[5001] font-bold"
+            className="absolute top-[150px] left-4 bg-black text-white px-4 py-2 rounded-full shadow-lg transition-colors z-[5001] font-bold"
             onClick={() => { setMenuSlideshowIndex(null); setSelectedCartForMenu(null); }}
           >
             Done
@@ -321,12 +321,12 @@ export default function PodPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 pt-[72px] p-4 sm:p-6 pb-8 bg-black/60 backdrop-blur-sm z-[1500] flex items-center justify-center"
+            className="fixed inset-0 pt-[72px] p-4 sm:p-6 pb-8 bg-black z-[1500] flex items-center justify-center"
             onClick={() => setSlideshowIndex(null)}
           >
             <div className="bg-black rounded-3xl w-full h-full relative overflow-hidden shadow-2xl border border-white/10" onClick={(e) => e.stopPropagation()}>
               <button 
-                className="absolute top-[150px] right-4 text-white p-2 hover:bg-white/20 rounded-full transition-colors z-[5001]"
+                className="absolute top-[150px] right-4 bg-black text-white p-2 rounded-full shadow-lg transition-colors z-[5001]"
                 onClick={() => setSlideshowIndex(null)}
               >
                 <X size={32} />

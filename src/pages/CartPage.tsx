@@ -198,8 +198,8 @@ export default function CartPage() {
           } else {
             navigate(-1);
           }
-        }} className="p-2 hover:bg-stone-200 rounded-full transition-colors">
-          <ChevronLeft size={24} />
+        }} className="px-4 py-2 bg-stone-100 text-stone-600 rounded-xl font-bold hover:bg-stone-200 transition-colors">
+          POD
         </button>
         <div className="flex gap-2">
           <button 
@@ -406,11 +406,11 @@ export default function CartPage() {
 
       {fullscreenImage && (
         <div 
-          className="fixed inset-0 z-[4000] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
+          className="fixed inset-0 z-[4000] bg-black flex items-center justify-center p-4 cursor-pointer"
           onClick={() => setFullscreenImage(null)}
         >
           <button 
-            className="absolute top-[150px] right-4 text-white p-2 hover:bg-white/20 rounded-full transition-colors"
+            className="absolute top-[150px] right-4 bg-black text-white p-2 rounded-full shadow-lg transition-colors z-[5001]"
             onClick={(e) => {
               e.stopPropagation();
               setFullscreenImage(null);
