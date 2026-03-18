@@ -11,6 +11,7 @@ import CartPage from './pages/CartPage';
 import PodForm from './pages/PodForm';
 import CartForm from './pages/CartForm';
 import CartListPage from './pages/CartListPage';
+import FavoritesPage from './pages/FavoritesPage';
 import CartOwnerPage from './pages/CartOwnerPage';
 import PodMapPage from './pages/PodMapPage';
 import ModeratorPage from './pages/ModeratorPage';
@@ -45,6 +46,7 @@ function AppRoutes() {
           <Route path="/cart/:cartId/edit" element={user ? <CartForm /> : <Navigate to="/login" />} />
           <Route path="/cart/:id/claim" element={user ? <CartOwnerPage /> : <Navigate to="/login" />} />
           <Route path="/carts" element={<CartListPage />} />
+          <Route path="/favorites" element={<FavoritesPage />} />
           <Route path="/moderator" element={user?.email?.toLowerCase() === 'bryonparis@gmail.com' ? <ModeratorPage /> : <Navigate to="/" />} />
         </Routes>
       </main>

@@ -83,16 +83,9 @@ async function startServer() {
   app.use(express.json({ limit: '5mb' }));
   app.use(express.urlencoded({ limit: '5mb', extended: true }));
 
-  app.use((req, res, next) => {
-    console.log(`Server: Received request: ${req.method} ${req.url}`);
-    next();
-  });
-
   const authMiddleware = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    console.log(`Server: Auth middleware for ${req.url}`);
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log(`Server: Auth middleware failed: No auth header`);
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
@@ -400,6 +393,34 @@ async function startServer() {
       res.json({ success: true });
     } catch (err) {
       console.error("Error updating cart:", err);
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  app.post("/api/carts/:id/favorite", authMiddleware, async (req, res) => {
+    try {
+      const cartId = req.params.id;
+      const userEmail = (req as any).user.email?.toLowerCase();
+      if (!userEmail) return res.status(401).json({ error: "Unauthorized" });
+
+      const cartRef = getDb().collection("carts").doc(cartId);
+      const cartDoc = await cartRef.get();
+      if (!cartDoc.exists) return res.status(404).json({ error: "Cart not found" });
+
+      const cartData = cartDoc.data()!;
+      const favorites = cartData.favorites || [];
+      
+      let newFavorites;
+      if (favorites.includes(userEmail)) {
+        newFavorites = favorites.filter((e: string) => e !== userEmail);
+      } else {
+        newFavorites = [...favorites, userEmail];
+      }
+
+      await cartRef.update({ favorites: newFavorites });
+      res.json({ success: true, favorites: newFavorites });
+    } catch (err) {
+      console.error("Error toggling favorite:", err);
       res.status(500).json({ error: (err as Error).message });
     }
   });

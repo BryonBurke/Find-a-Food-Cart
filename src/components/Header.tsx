@@ -5,7 +5,7 @@ import { auth } from '../firebase';
 import { useAuth } from '../AuthContext';
 import { useEditMode } from '../EditModeContext';
 import { UserIcon } from './Icons';
-import { LogOut, Shield, ShieldOff, Menu, Map as MapIcon, Utensils } from 'lucide-react';
+import { LogOut, Shield, ShieldOff, Menu, Heart, Map as MapIcon, Utensils } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export function Header() {
@@ -36,6 +36,13 @@ export function Header() {
         </Link>
 
         <div className="flex items-center gap-4">
+          <Link 
+            to="/favorites" 
+            className={`p-2 rounded-xl transition-colors ${location.pathname === '/favorites' ? 'text-emerald-600 bg-emerald-50' : 'text-stone-500 hover:bg-stone-100'}`}
+          >
+            <Heart size={24} />
+          </Link>
+          
           {user ? (
             <div className="relative">
               <button 
