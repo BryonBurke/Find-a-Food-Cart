@@ -18,9 +18,23 @@ import { auth } from './firebase';
 import { getEnv } from './env';
 import { GoogleGenAI, Type } from "@google/genai";
 
-import { CartIcon, PodIcon, UserIcon, NavArrowIcon } from './components/Icons';
-import { CameraInput, FileInput, VoiceInput, Directions, MapZoomListener, MapPanner, MapFitter } from './components/MapComponents';
-import { getDistance, checkContentSafety, isCartOpen } from './utils';
+// Custom Food Cart Icon
+const CartIcon = () => (
+  <div className="bg-emerald-600 p-1.5 rounded-full shadow-lg border-2 border-white text-white transform hover:scale-110 transition-transform flex items-center justify-center pointer-events-none">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="pointer-events-none">
+      <rect x="2" y="4" width="20" height="2" rx="1" />
+      <path d="M5 6v8" />
+      <path d="M19 6v8" />
+      <path d="M5 10h14" />
+      <rect x="3" y="14" width="18" height="5" rx="1" />
+      <circle cx="8" cy="19" r="3" />
+      <circle cx="16" cy="19" r="3" />
+      <path d="M8 19h.01" />
+      <path d="M16 19h.01" />
+      <path d="M21 16h2" />
+    </svg>
+  </div>
+);
 
 const getShortName = (name: string) => {
   const ignoredWords = ['the', 'a', 'an', 'and', 'or', 'our', 'your', 'my', 'of', 'in', 'on', 'at'];
@@ -39,9 +53,388 @@ const getTwoLineName = (name: string) => {
   return meaningfulWords[0] || words[0] || '';
 };
 
+// Custom Pod Icon
+const PodIcon = ({ name, hasOpenCart, isLevel1 }: { name: string, hasOpenCart: boolean, isLevel1: boolean }) => (
+  <div 
+    className={`bg-violet-600 flex items-center justify-center shadow-lg border-2 ${hasOpenCart ? 'border-green-500' : 'border-white'} text-white transition-all group-hover:scale-110 pointer-events-none ${isLevel1 ? 'w-4 h-4' : 'w-10 h-10'} ${hasOpenCart ? 'ring-4 ring-green-500/80' : ''} animate-pulse`}
+  >
+    {!isLevel1 && (
+      <span className="text-[10px] font-bold text-center leading-tight pointer-events-none whitespace-pre-wrap px-0.5">
+        {getTwoLineName(name)}
+      </span>
+    )}
+  </div>
+);
+
+const UserIcon = () => (
+  <div className="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg animate-pulse"></div>
+);
+
+const NavArrowIcon = () => (
+  <div className="bg-blue-600 p-2 rounded-full shadow-xl border-4 border-white text-white transform">
+    <Navigation size={20} className="fill-current" />
+  </div>
+);
+
 // --- Helpers ---
 
+const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371e3;
+  const p1 = lat1 * Math.PI/180;
+  const p2 = lat2 * Math.PI/180;
+  const dp = (lat2-lat1) * Math.PI/180;
+  const dl = (lon2-lon1) * Math.PI/180;
+  const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
+
+const fileToDataUrl = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        // Max dimension (increased by 40% from 600 to 840)
+        const MAX_SIZE = 840;
+        
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height *= MAX_SIZE / width;
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width *= MAX_SIZE / height;
+            height = MAX_SIZE;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(reader.result as string);
+          return;
+        }
+        
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        let quality = 0.7;
+        let dataUrl = canvas.toDataURL('image/jpeg', quality);
+        
+        // Ensure the base64 string is under ~800KB to be safe for Firestore's 1MB limit
+        while (dataUrl.length > 800000 && quality > 0.1) {
+          quality -= 0.1;
+          dataUrl = canvas.toDataURL('image/jpeg', quality);
+        }
+        
+        resolve(dataUrl);
+      };
+      img.onerror = () => resolve(reader.result as string);
+      img.src = reader.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
+
 // --- Components ---
+
+function CameraInput({ onCapture, label, className, capture = true }: { onCapture: (url: string) => void, label?: React.ReactNode, className?: string, capture?: boolean }) {
+  const handleChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const url = await fileToDataUrl(file);
+        onCapture(url);
+      } catch (err) {
+        console.error("Error capturing image:", err);
+      }
+    }
+  };
+
+  return (
+    <label className={`cursor-pointer flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 px-4 py-2 rounded-xl transition-colors text-emerald-700 font-medium ${className}`}>
+      <Camera size={18} />
+      <span>{label || 'Take Photo'}</span>
+      <input
+        type="file"
+        accept="image/*"
+        capture={capture ? "environment" : undefined}
+        onChange={handleChange}
+        className="hidden"
+      />
+    </label>
+  );
+}
+
+function FileInput({ onCapture, label, className }: { onCapture: (url: string) => void, label?: React.ReactNode, className?: string }) {
+  const handleChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const url = await fileToDataUrl(file);
+        onCapture(url);
+      } catch (err) {
+        console.error("Error uploading file:", err);
+      }
+    }
+  };
+
+  return (
+    <label className={`cursor-pointer flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 px-4 py-2 rounded-xl transition-colors text-emerald-700 font-medium ${className}`}>
+      <File size={18} />
+      <span>{label || 'Upload File'}</span>
+      <input
+        type="file"
+        accept="image/*"
+        onChange={handleChange}
+        className="hidden"
+      />
+    </label>
+  );
+}
+
+function VoiceInput({ onResult, className }: { onResult: (text: string) => void, className?: string }) {
+  const [isListening, setIsListening] = useState(false);
+
+  const startListening = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not supported in this browser.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error:", event.error);
+      setIsListening(false);
+    };
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      onResult(transcript);
+    };
+
+    recognition.start();
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={startListening}
+      className={`p-2 rounded-full transition-colors ${isListening ? 'bg-red-100 text-red-600 animate-pulse' : 'hover:bg-stone-100 text-stone-400'} ${className}`}
+      title="Voice Input"
+    >
+      <Mic size={18} />
+    </button>
+  );
+}
+
+function Directions({ 
+  origin, 
+  destination, 
+  onRouteFetched 
+}: { 
+  origin: [number, number], 
+  destination: [number, number],
+  onRouteFetched: (route: google.maps.DirectionsRoute) => void
+}) {
+  const map = useMap();
+  const routesLibrary = useMapsLibrary('routes');
+  const [directionsService, setDirectionsService] = useState<google.maps.DirectionsService>();
+  const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer>();
+
+  useEffect(() => {
+    if (!routesLibrary || !map) return;
+    setDirectionsService(new routesLibrary.DirectionsService());
+    setDirectionsRenderer(new routesLibrary.DirectionsRenderer({ 
+      map, 
+      suppressMarkers: true,
+      polylineOptions: {
+        strokeColor: '#10b981',
+        strokeOpacity: 0.8,
+        strokeWeight: 6,
+      }
+    }));
+  }, [routesLibrary, map]);
+
+  useEffect(() => {
+    if (!directionsService || !directionsRenderer) return;
+
+    directionsService.route({
+      origin: { lat: origin[0], lng: origin[1] },
+      destination: { lat: destination[0], lng: destination[1] },
+      travelMode: google.maps.TravelMode.DRIVING,
+    }).then(response => {
+      directionsRenderer.setDirections(response);
+      
+      // Bind to the panel if it exists
+      const panel = document.getElementById('directions-panel');
+      if (panel) {
+        directionsRenderer.setPanel(panel);
+      }
+
+      const route = response.routes[0];
+      if (route) {
+        onRouteFetched(route);
+      }
+    }).catch(err => {
+      console.error("Directions request failed", err);
+    });
+
+    return () => {
+      directionsRenderer.setMap(null);
+      directionsRenderer.setPanel(null);
+    };
+  }, [directionsService, directionsRenderer, origin[0], origin[1], destination[0], destination[1]]);
+
+  return null;
+}
+
+
+
+function MapZoomListener() {
+  const map = useMap();
+  useEffect(() => {
+    if (!map) return;
+    const listener = map.addListener('zoom_changed', () => {
+      window.dispatchEvent(new CustomEvent('map-zoom-changed', { detail: map.getZoom() }));
+    });
+    return () => {
+      google.maps.event.removeListener(listener);
+    };
+  }, [map]);
+
+  useEffect(() => {
+    const handleSetZoom = (e: any) => {
+      if (map) {
+        map.setZoom(e.detail);
+      }
+    };
+    window.addEventListener('set-zoom', handleSetZoom);
+    return () => window.removeEventListener('set-zoom', handleSetZoom);
+  }, [map]);
+  return null;
+}
+
+const checkContentSafety = async (text: string) => {
+  if (!text || text.trim() === '') return { isHateful: false, reason: '' };
+  try {
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Analyze the following text for hate speech, racism, anti-LGBTQ+ sentiment, or other highly offensive content. Text: "${text}"`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            isHateful: { type: Type.BOOLEAN, description: "True if the text contains hate speech, racism, anti-LGBTQ+ sentiment, or highly offensive content." },
+            reason: { type: Type.STRING, description: "Explanation of why it was flagged, or empty string if safe." }
+          },
+          required: ["isHateful", "reason"]
+        }
+      }
+    });
+    const result = JSON.parse(response.text || '{"isHateful": false, "reason": ""}');
+    return result;
+  } catch (err) {
+    console.error("Safety check failed:", err);
+    return { isHateful: false, reason: '' };
+  }
+};
+
+function isCartOpen(openTime?: string, closeTime?: string): boolean {
+  if (!openTime || !closeTime || typeof openTime !== 'string' || typeof closeTime !== 'string') return false;
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  
+  const [openH, openM] = openTime.split(':').map(Number);
+  const openMinutes = openH * 60 + openM;
+  
+  const [closeH, closeM] = closeTime.split(':').map(Number);
+  let closeMinutes = closeH * 60 + closeM;
+  
+  if (isNaN(openMinutes) || isNaN(closeMinutes)) return false;
+  
+  if (closeMinutes < openMinutes) {
+    // Closes after midnight
+    closeMinutes += 24 * 60;
+  }
+  
+  let checkMinutes = currentMinutes;
+  if (checkMinutes < openMinutes && closeMinutes > 24 * 60) {
+    checkMinutes += 24 * 60;
+  }
+  
+  return checkMinutes >= openMinutes && checkMinutes <= closeMinutes;
+}
+
+function MapPanner({ location, isActive, panTrigger, resetTrigger, onPanComplete }: { location: [number, number] | null, isActive: boolean, panTrigger?: number, resetTrigger?: number, onPanComplete?: () => void }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (isActive && location && map) {
+      map.panTo({ lat: location[0], lng: location[1] });
+      map.setZoom(18);
+    }
+  }, [location, isActive, map]);
+
+  useEffect(() => {
+    if (panTrigger && panTrigger > 0 && location && map) {
+      map.panTo({ lat: location[0], lng: location[1] });
+      map.setZoom(19);
+      map.setMapTypeId('roadmap');
+      if (onPanComplete) onPanComplete();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panTrigger]);
+
+  useEffect(() => {
+    if (resetTrigger && resetTrigger > 0 && map) {
+      map.setZoom(13);
+      map.setMapTypeId('roadmap');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetTrigger]);
+
+  return null;
+}
+
+function MapFitter({ pods, searchTag }: { pods: Pod[], searchTag: string }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (map && searchTag && pods.length > 0) {
+      const bounds = new google.maps.LatLngBounds();
+      pods.forEach(pod => {
+        bounds.extend({ lat: pod.latitude, lng: pod.longitude });
+      });
+      
+      map.fitBounds(bounds, 50);
+      
+      if (pods.length === 1) {
+        const listener = google.maps.event.addListenerOnce(map, 'bounds_changed', () => {
+          if (map.getZoom()! > 16) map.setZoom(16);
+        });
+      }
+    }
+  }, [map, searchTag, pods]);
+
+  return null;
+}
 
 import { useTutorial } from './TutorialContext';
 
@@ -1167,27 +1560,17 @@ function PodPage() {
         )}
       </AnimatePresence>
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div className="flex items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4 min-w-0">
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black bg-gradient-to-br from-slate-200 via-slate-400 to-slate-200 bg-clip-text text-transparent drop-shadow-lg truncate">{pod.name}</h1>
-            <p className="text-stone-300 font-medium truncate">
+            <p className="text-stone-500 font-medium truncate">
               {pod.address}
             </p>
           </div>
         </div>
         
         <div className="flex items-center gap-2">
-          <button 
-            onClick={() => {
-              window.dispatchEvent(new Event('reset-map'));
-              navigate('/');
-            }}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl transition-colors font-bold shadow-lg"
-          >
-            <MapIcon size={18} />
-            <span>Main Map</span>
-          </button>
           {editMode && user && (
             <div className="flex gap-2 mr-2">
               <button 
@@ -1571,18 +1954,6 @@ function CartPage() {
       animate={{ opacity: 1 }}
       className="max-w-4xl mx-auto p-4 pb-24"
     >
-      <div className="flex items-center justify-between mb-6">
-        <button 
-          onClick={() => {
-            window.dispatchEvent(new Event('reset-map'));
-            navigate('/');
-          }}
-          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl transition-colors font-bold shadow-lg"
-        >
-          <MapIcon size={18} />
-          <span>Main Map</span>
-        </button>
-      </div>
       <AnimatePresence>
         {showDeleteConfirm && (
           <motion.div 
@@ -2700,16 +3071,6 @@ function PodMapPage() {
     <div className="absolute inset-0 flex flex-col">
       <div className="bg-white/90 backdrop-blur-md border-b border-stone-200 px-4 py-3 flex items-center justify-between z-10 shadow-sm">
         <div className="flex items-center gap-4">
-          <button 
-            onClick={() => {
-              window.dispatchEvent(new Event('reset-map'));
-              navigate('/');
-            }}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl transition-colors font-bold shadow-sm text-sm"
-          >
-            <MapIcon size={16} />
-            <span>Main Map</span>
-          </button>
           <div>
             <h1 className="text-xl font-bold text-stone-900 leading-tight">{pod.name}</h1>
           </div>
@@ -3279,13 +3640,6 @@ function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPage?: boo
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             className="absolute top-full right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col py-2 z-[3000]"
           >
-            <Link to="/" onClick={() => setMenuOpen(false)} className="px-4 py-3 text-sm font-semibold text-stone-700 hover:bg-stone-100 transition-colors flex items-center gap-2 text-left">
-              <Search size={16} /> Search for Cart Pod
-            </Link>
-            <Link to="/" onClick={() => setMenuOpen(false)} className="px-4 py-3 text-sm font-semibold text-stone-700 hover:bg-stone-100 transition-colors flex items-center gap-2 text-left border-b border-stone-100">
-              <Search size={16} /> Search for Cart
-            </Link>
-
             {isHome && user && (
               <button 
                 onClick={() => {
