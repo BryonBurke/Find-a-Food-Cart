@@ -66,12 +66,17 @@ export function Header() {
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-stone-100 p-2 z-50"
                     >
+                      <div className="p-4 border-b border-stone-50 mb-2">
+                        <p className="font-black text-stone-900 truncate">{user.displayName || 'User'}</p>
+                        <p className="text-xs text-stone-400 truncate">{user.email}</p>
+                      </div>
+                      
                       <button 
                         onClick={() => {
                           setEditMode(!editMode);
                           setIsMenuOpen(false);
                         }}
-                        className={`w-full flex items-center gap-3 p-3 rounded-xl font-bold text-sm transition-colors ${editMode ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-stone-50 text-stone-600'}`}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-stone-50 text-stone-600 font-bold text-sm transition-colors"
                       >
                         {editMode ? <ShieldOff size={18} className="text-red-500" /> : <Shield size={18} className="text-emerald-500" />}
                         {editMode ? 'Disable Edit Mode' : 'Enable Edit Mode'}
@@ -84,11 +89,6 @@ export function Header() {
                         <LogOut size={18} />
                         Sign Out
                       </button>
-
-                      <div className="p-4 border-t border-stone-100 mt-2">
-                        <p className="font-black text-stone-900 truncate">{user.displayName || 'User'}</p>
-                        <p className="text-xs text-stone-400 truncate">{user.email}</p>
-                      </div>
                     </motion.div>
                   </>
                 )}
