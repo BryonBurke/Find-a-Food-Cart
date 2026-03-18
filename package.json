@@ -6,17 +6,16 @@
   "scripts": {
     "dev": "tsx server.ts",
     "start": "tsx server.ts",
-    "build": "node -e \"console.log('Available ENV keys during build:', Object.keys(process.env).filter(k => k.startsWith('VITE_') || k.startsWith('FIREBASE_')))\" && vite build",
+    "build": "NODE_OPTIONS=--max-old-space-size=2048 vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "NODE_OPTIONS=--max-old-space-size=2048 tsc --noEmit"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vis.gl/react-google-maps": "^1.7.1",
     "@vitejs/plugin-react": "^5.0.4",
-    "better-sqlite3": "^12.4.1",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
