@@ -17,7 +17,6 @@ export default function CartPage() {
   const [podCarts, setPodCarts] = useState<Cart[]>([]);
   const [loading, setLoading] = useState(true);
   const [fullscreenImageIndex, setFullscreenImageIndex] = useState<number | null>(null);
-  const [isFavoriting, setIsFavoriting] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -53,52 +52,27 @@ export default function CartPage() {
   }, [cart, navigate]);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
-
-  useEffect(() => {
-    if (user && cart) {
-      setIsFavorite(cart.favorites?.includes(user.email?.toLowerCase() || '') || false);
-    }
-  }, [cart, user]);
-
-  const toggleFavorite = async () => {
-    if (!user) {
-      if (confirm("Please login to favorite carts. Go to login page?")) {
-        navigate('/login');
-      }
-      return;
-    }
-    
-    if (!cart) return;
-
-    const newStatus = !isFavorite;
-    setIsFavorite(newStatus);
-
-    try {
-      const token = await user.getIdToken();
-      await fetch(`/api/carts/${cart.id}/favorite`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-    } catch (err) {
-      console.error("Failed to toggle favorite", err);
-      setIsFavorite(!newStatus);
-    }
-  };
 
   const deleteCart = async () => {
-    if (!cart || !user) return;
+    console.log("Client: deleteCart called. cart:", !!cart, "user:", !!user);
+    if (!cart || !user) {
+      console.error("Client: Cannot delete cart. cart or user is missing.");
+      return;
+    }
 
+    console.log(`Client: Attempting to delete cart ${cart.id}`);
     try {
       const token = await user.getIdToken();
       const res = await fetch(`/api/carts/${cart.id}`, { 
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      console.log(`Client: Delete request returned status ${res.status}`);
       if (res.ok) {
         navigate(`/pod/${cart.podId}`);
       } else {
         const error = await res.json();
+        console.error("Client: Failed to delete cart:", error);
         alert(`Failed to delete cart: ${error.error || 'Unknown error'}`);
         setShowDeleteConfirm(false);
       }
@@ -158,7 +132,10 @@ export default function CartPage() {
               </p>
               <div className="flex flex-col gap-3">
                 <button 
-                  onClick={deleteCart}
+                  onClick={() => {
+                    console.log("Client: Confirmation button clicked");
+                    deleteCart();
+                  }}
                   className="w-full bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-100"
                 >
                   Yes, Delete Cart
@@ -190,40 +167,33 @@ export default function CartPage() {
           POD
         </button>
         <div className="flex gap-2">
-          <button 
-            onClick={toggleFavorite}
-            className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-rose-500 bg-rose-50 hover:bg-rose-100' : 'text-stone-400 hover:bg-stone-100'}`}
-            title={isFavorite ? "Unfavorite" : "Favorite"}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill={isFavorite ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
-          </button>
-          {!!user && !!user.uid && !user.isAnonymous && canEdit && editMode && (
+          {!!user && !!user.uid && !user.isAnonymous && canEdit && (
             <>
-              <button 
-                onClick={() => {
-                  if (user) {
-                    navigate(`/cart/${id}/edit`);
-                  } else {
-                    navigate('/login');
-                  }
-                }} 
-                className="p-2 hover:bg-stone-200 rounded-full transition-colors text-stone-600"
-              >
-                <Edit2 size={20} />
-              </button>
-              {user && (
+              {editMode && (
                 <button 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setShowDeleteConfirm(true);
+                  onClick={() => {
+                    if (user) {
+                      navigate(`/cart/${id}/edit`);
+                    } else {
+                      navigate('/login');
+                    }
                   }} 
-                  className="p-2 hover:bg-red-100 rounded-full transition-colors text-red-600 z-50"
-                  title="Delete Cart"
+                  className="p-2 hover:bg-stone-200 rounded-full transition-colors text-stone-600"
                 >
-                  <Trash2 size={20} />
+                  <Edit2 size={20} />
                 </button>
               )}
+              <button 
+                onClick={() => {
+                  console.log("Client: New delete button clicked");
+                  setShowDeleteConfirm(true);
+                }} 
+                className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors border border-red-200"
+                title="Delete Cart"
+              >
+                <Trash2 size={18} />
+                Delete
+              </button>
             </>
           )}
         </div>

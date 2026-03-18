@@ -41,6 +41,7 @@ export default function CartForm() {
     fetch('/api/carts')
       .then(res => res.json())
       .then(data => {
+        console.log("CartForm: Fetched carts for tags", data);
         if (Array.isArray(data)) {
           const tagsMap = new Map<string, string>();
           data.forEach(c => {
@@ -50,12 +51,15 @@ export default function CartForm() {
                 tags.forEach(t => {
                   if (typeof t === 'object' && t !== null && t.tag && t.name) {
                     tagsMap.set(t.tag.toUpperCase(), t.name);
+                  } else if (typeof t === 'string') {
+                    tagsMap.set(t.toUpperCase(), t);
                   }
                 });
               }
             } catch(e) {}
           });
           const tagsList = Array.from(tagsMap.entries()).map(([tag, name]) => ({ tag, name }));
+          console.log("CartForm: Available tags", tagsList);
           setAvailableTags(tagsList);
         }
       })
