@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "NODE_OPTIONS=--max-old-space-size=1024 tsx server.ts",
-    "start": "NODE_OPTIONS=--max-old-space-size=1024 tsx server.ts",
-    "build": "NODE_OPTIONS=--max-old-space-size=1024 node -e \"console.log('Available ENV keys during build:', Object.keys(process.env).filter(k => k.startsWith('VITE_') || k.startsWith('FIREBASE_')))\" && vite build",
+    "dev": "NODE_OPTIONS=--max-old-space-size=2048 tsx server.ts",
+    "start": "NODE_OPTIONS=--max-old-space-size=2048 tsx server.ts",
+    "build": "node -e \"console.log('Available ENV keys during build:', Object.keys(process.env).filter(k => k.startsWith('VITE_') || k.startsWith('FIREBASE_')))\" && NODE_OPTIONS=--max-old-space-size=2048 vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
