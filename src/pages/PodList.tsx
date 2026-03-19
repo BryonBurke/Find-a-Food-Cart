@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { MapPin, Plus, Heart, Navigation } from 'lucide-react';
+import { MapPin, Plus, Navigation } from 'lucide-react';
 import { Pod } from '../types';
 import { useAuth } from '../AuthContext';
 import { useEditMode } from '../EditModeContext';

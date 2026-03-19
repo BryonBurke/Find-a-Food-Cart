@@ -33,9 +33,14 @@ export default function PodPage() {
         setCarts(prev => prev.filter(c => c.id !== cart.id));
         setSlideshowIndex(null);
         setCartToDelete(null);
+      } else {
+        const error = await res.json();
+        console.error("Client: Failed to delete cart:", error);
+        alert(`Failed to delete cart: ${error.error || 'Unknown error'}`);
       }
     } catch (err) {
       console.error(err);
+      alert("A network error occurred while trying to delete the cart.");
     }
   };
 
@@ -89,7 +94,6 @@ export default function PodPage() {
   const [selectedCartForMenu, setSelectedCartForMenu] = useState<Cart | null>(null);
   const [slideshowIndex, setSlideshowIndex] = useState<number | null>(null);
   const [menuSlideshowIndex, setMenuSlideshowIndex] = useState<number | null>(null);
-  const [localFavorites, setLocalFavorites] = useState<string[]>([]);
 
   const menuGallery = useMemo(() => {
     if (!selectedCartForMenu) return [];
@@ -106,38 +110,6 @@ export default function PodPage() {
     }
   }, [selectedCartForMenu]);
 
-  useEffect(() => {
-    if (user && carts.length > 0) {
-      const userEmail = user.email?.toLowerCase();
-      const favs = carts
-        .filter(c => c.favorites?.includes(userEmail || ''))
-        .map(c => c.id);
-      setLocalFavorites(favs);
-    }
-  }, [carts, user]);
-
-  const toggleFavorite = async (cartId: string) => {
-    if (!user) {
-      if (confirm("Please login to favorite carts. Go to login page?")) {
-        navigate('/login');
-      }
-      return;
-    }
-
-    const isFav = localFavorites.includes(cartId);
-    setLocalFavorites(prev => isFav ? prev.filter(id => id !== cartId) : [...prev, cartId]);
-
-    try {
-      const token = await user.getIdToken();
-      await fetch(`/api/carts/${cartId}/favorite`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-    } catch (err) {
-      console.error("Failed to toggle favorite", err);
-      setLocalFavorites(prev => isFav ? [...prev, cartId] : prev.filter(id => id !== cartId));
-    }
-  };
 
   const nextSlide = useCallback(() => {
     setCurrentSlide((prev) => (prev + 1) % carts.length);
@@ -180,6 +152,44 @@ export default function PodPage() {
       style={{ backgroundColor: '#627D8C' }}
     >
       <div className="max-w-7xl mx-auto p-4 pb-24">
+      <AnimatePresence>
+        {cartToDelete && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[3000] flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl"
+            >
+              <h3 className="text-2xl font-bold mb-4 text-stone-900">Delete Cart?</h3>
+              <p className="text-stone-600 mb-8">
+                Are you sure you want to delete <span className="font-bold text-stone-900">"{cartToDelete.name}"</span>? 
+                This action cannot be undone.
+              </p>
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={() => deleteCart(cartToDelete)}
+                  className="w-full bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-100"
+                >
+                  Yes, Delete Cart
+                </button>
+                <button 
+                  onClick={() => setCartToDelete(null)}
+                  className="w-full bg-stone-100 text-stone-600 py-3 rounded-xl font-bold hover:bg-stone-200 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {showDeleteConfirm && (
           <motion.div 
@@ -362,12 +372,6 @@ export default function PodPage() {
                 
                 <div className="flex flex-wrap gap-3 mt-4 justify-center">
                   <button 
-                    onClick={(e) => { e.stopPropagation(); toggleFavorite(carts[slideshowIndex].id); }}
-                    className={`px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors text-sm sm:text-base ${localFavorites.includes(carts[slideshowIndex].id) ? 'bg-rose-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}
-                  >
-                    <Heart size={18} fill={localFavorites.includes(carts[slideshowIndex].id) ? "currentColor" : "none"} />
-                  </button>
-                  <button 
                     onClick={(e) => { e.stopPropagation(); setSelectedCartForMenu(carts[slideshowIndex]); setMenuSlideshowIndex(0); setSlideshowIndex(null); }}
                     className="bg-white text-black px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-stone-200 transition-colors text-sm sm:text-base"
                   >
@@ -500,15 +504,6 @@ export default function PodPage() {
                     {cart.openTime && cart.closeTime ? `${cart.openTime} - ${cart.closeTime}` : 'Hours vary'}
                   </div>
                   <div className="flex gap-2">
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFavorite(cart.id);
-                      }}
-                      className={`p-2 rounded-lg transition-colors ${localFavorites.includes(cart.id) ? 'text-rose-500 bg-rose-50' : 'text-stone-400 bg-stone-100 hover:bg-stone-200'}`}
-                    >
-                      <Heart size={16} fill={localFavorites.includes(cart.id) ? "currentColor" : "none"} />
-                    </button>
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
