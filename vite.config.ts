@@ -14,13 +14,6 @@ export default defineConfig(({mode}) => {
       sourcemap: false,
       rollupOptions: {
         maxParallelFileOps: 2,
-        output: {
-          manualChunks(id) {
-            if (id.includes('node_modules')) {
-              return 'vendor';
-            }
-          },
-        },
       },
     },
     resolve: {
