@@ -423,11 +423,12 @@ export default function MapView() {
                 }}
               >
                 <div 
-                  className="relative flex flex-col items-center group z-10 cursor-pointer"
+                  className="marker-container relative flex flex-col items-center group z-10 cursor-pointer"
                   style={{ touchAction: 'none', WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
                   onContextMenu={(e) => {
                     e.preventDefault();
                   }}
+                  draggable={false}
                 >
                   <div className="absolute bottom-full mb-1 bg-stone-900/90 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-xl border border-stone-700 whitespace-nowrap text-sm font-bold text-white pointer-events-none hidden group-hover:block z-[100]">
                     {pod.name}
@@ -447,11 +448,12 @@ export default function MapView() {
               }}
             >
               <div 
-                className="relative flex flex-col items-center cursor-pointer group z-10"
+                className="marker-container relative flex flex-col items-center cursor-pointer group z-10"
                 style={{ touchAction: 'none', WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
                 onContextMenu={(e) => {
                   e.preventDefault();
                 }}
+                draggable={false}
               >
                 <div className="absolute bottom-full mb-1 bg-stone-900/90 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-xl border border-stone-700 whitespace-nowrap text-sm font-bold text-white pointer-events-none hidden group-hover:block z-[100]">
                   New Pod

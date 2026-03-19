@@ -30,10 +30,11 @@ const getTwoLineName = (name: string) => {
 
 export const PodIcon = ({ name, hasOpenCart, isLevel1 }: { name: string, hasOpenCart: boolean, isLevel1: boolean }) => (
   <div 
+    draggable={false}
     className={`bg-violet-600 flex items-center justify-center shadow-lg border-2 ${hasOpenCart ? 'border-green-500' : 'border-white'} text-white transition-all group-hover:scale-110 pointer-events-none ${isLevel1 ? 'w-4 h-4' : 'w-10 h-10'} ${hasOpenCart ? 'ring-4 ring-green-500/80' : ''} animate-pulse`}
   >
     {!isLevel1 && (
-      <span className="text-[10px] font-bold text-center leading-tight pointer-events-none whitespace-pre-wrap px-0.5" translate="no">
+      <span draggable={false} className="text-[10px] font-bold text-center leading-tight pointer-events-none whitespace-pre-wrap px-0.5" translate="no">
         {getTwoLineName(name)}
       </span>
     )}
