@@ -315,9 +315,12 @@ export default function PodMapPage() {
                   <div 
                     className={`relative flex flex-col items-center group cursor-pointer ${isHighlighted || selectedCartId === cart.id ? 'z-50' : 'z-10'}`}
                     style={{ touchAction: 'none', WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                    }}
                   >
                     <div className={`${pinColor} w-12 h-12 shadow-lg border-2 border-white text-white transition-all ${ringClass} ${selectedCartId === cart.id ? 'ring-4 ring-red-600 scale-110' : ''} group-hover:scale-110 pointer-events-none flex items-center justify-center`}>
-                      <span className="text-[10px] font-bold whitespace-nowrap pointer-events-none">
+                      <span className="text-[10px] font-bold whitespace-nowrap pointer-events-none" translate="no">
                         {(() => {
                           try {
                             const tags = typeof cart.tags === 'string' ? JSON.parse(cart.tags || '[]') : (Array.isArray(cart.tags) ? cart.tags : []);
