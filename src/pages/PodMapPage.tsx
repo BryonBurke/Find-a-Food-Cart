@@ -21,6 +21,7 @@ export default function PodMapPage() {
   const [pod, setPod] = useState<Pod | null>(null);
   const [carts, setCarts] = useState<Cart[]>([]);
   const [loading, setLoading] = useState(true);
+  const [gestureHandling, setGestureHandling] = useState<'greedy' | 'none'>('greedy');
   const [isDragging, setIsDragging] = useState(false);
   const [selectedCartId, setSelectedCartId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -235,7 +236,7 @@ export default function PodMapPage() {
             mapId={getEnv('VITE_GOOGLE_MAPS_MAP_ID') || "DEMO_MAP_ID"}
             disableDefaultUI={true}
             disableDoubleClickZoom={true}
-            gestureHandling="greedy"
+            gestureHandling={gestureHandling}
             mapTypeId="roadmap"
             style={{ width: '100%', height: '100%' }}
           >
@@ -293,9 +294,15 @@ export default function PodMapPage() {
                   key={cart.id} 
                   position={{ lat: cart.latitude!, lng: cart.longitude! }}
                   draggable={editMode && !!user && (!cart.ownerEmail || user.email?.toLowerCase() === cart.ownerEmail || user.email?.toLowerCase() === 'bryonparis@gmail.com')}
-                  onDragStart={() => setIsDragging(true)}
+                  onDragStart={() => {
+                    setIsDragging(true);
+                    setGestureHandling('none');
+                  }}
                   onDragEnd={(e) => {
-                    setTimeout(() => setIsDragging(false), 50);
+                    setTimeout(() => {
+                      setIsDragging(false);
+                      setGestureHandling('greedy');
+                    }, 50);
                     if (e.latLng) {
                       handleDragEnd(cart.id, e.latLng.lat(), e.latLng.lng());
                     }
