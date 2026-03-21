@@ -90,19 +90,29 @@ export function MapZoomListener() {
 
 export function MapPanner({ location, isActive, panTrigger, resetTrigger, onPanComplete }: { location: [number, number] | null, isActive: boolean, panTrigger?: number, resetTrigger?: number, onPanComplete?: () => void }) {
   const map = useMap();
+  const lastProcessedPan = React.useRef<number>(0);
+  const lastPannedLoc = React.useRef<[number, number] | null>(null);
 
   useEffect(() => {
     if (isActive && location && map) {
-      map.panTo({ lat: location[0], lng: location[1] });
-      map.setZoom(18);
+      const shouldPan = !lastPannedLoc.current || 
+                        lastPannedLoc.current[0] !== location[0] || 
+                        lastPannedLoc.current[1] !== location[1];
+      
+      if (shouldPan) {
+        map.panTo({ lat: location[0], lng: location[1] });
+        map.setZoom(18);
+        lastPannedLoc.current = location;
+      }
     }
   }, [location, isActive, map]);
 
   useEffect(() => {
-    if (panTrigger && panTrigger > 0 && location && map) {
+    if (panTrigger && panTrigger > lastProcessedPan.current && location && map) {
       map.panTo({ lat: location[0], lng: location[1] });
       map.setZoom(19);
       map.setMapTypeId('roadmap');
+      lastProcessedPan.current = panTrigger;
       if (onPanComplete) onPanComplete();
     }
   }, [panTrigger, location, map, onPanComplete]);
@@ -119,21 +129,25 @@ export function MapPanner({ location, isActive, panTrigger, resetTrigger, onPanC
 
 export function MapFitter({ pods, searchTag }: { pods: Pod[], searchTag: string }) {
   const map = useMap();
+  const lastSearchTag = React.useRef<string>('');
 
   useEffect(() => {
-    if (map && searchTag && pods.length > 0) {
+    if (map && searchTag && pods.length > 0 && searchTag !== lastSearchTag.current) {
       const bounds = new google.maps.LatLngBounds();
       pods.forEach(pod => {
         bounds.extend({ lat: pod.latitude, lng: pod.longitude });
       });
       
       map.fitBounds(bounds, 50);
+      lastSearchTag.current = searchTag;
       
       if (pods.length === 1) {
         google.maps.event.addListenerOnce(map, 'bounds_changed', () => {
           if (map.getZoom()! > 16) map.setZoom(16);
         });
       }
+    } else if (!searchTag) {
+      lastSearchTag.current = '';
     }
   }, [map, searchTag, pods]);
 
@@ -190,9 +204,19 @@ export function CenterPodButton({ pod, setPod }: { pod: Pod, setPod: (p: Pod) =>
 export function MapBoundsHandler({ carts, pod }: { carts: Cart[], pod: Pod }) {
   const map = useMap();
   const core = useMapsLibrary('core');
+  const hasFitted = React.useRef(false);
+  const lastPodId = React.useRef<string | null>(null);
 
   useEffect(() => {
     if (!map || !core || !carts || carts.length === 0) return;
+
+    // Reset if pod changes
+    if (lastPodId.current !== pod.id) {
+      hasFitted.current = false;
+      lastPodId.current = pod.id;
+    }
+
+    if (hasFitted.current) return;
 
     const bounds = new core.LatLngBounds();
     bounds.extend({ lat: pod.latitude, lng: pod.longitude });
@@ -209,6 +233,7 @@ export function MapBoundsHandler({ carts, pod }: { carts: Cart[], pod: Pod }) {
     if (hasPlacedCarts) {
       const timer = setTimeout(() => {
         map.fitBounds(bounds, { top: 80, bottom: 80, left: 40, right: 40 });
+        hasFitted.current = true;
       }, 100);
       return () => clearTimeout(timer);
     }

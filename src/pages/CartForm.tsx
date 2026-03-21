@@ -6,7 +6,7 @@ import { useAuth } from '../AuthContext';
 import { VoiceInput } from '../components/VoiceInput';
 import { CameraInput } from '../components/CameraInput';
 import { FileInput } from '../components/FileInput';
-import { checkContentSafety } from '../utils';
+import { checkContentSafety, getRandomFoodImage } from '../utils';
 
 export default function CartForm() {
   const { user } = useAuth();
@@ -38,29 +38,12 @@ export default function CartForm() {
   const [availableTags, setAvailableTags] = useState<{name: string, tag: string}[]>([]);
 
   useEffect(() => {
-    fetch('/api/carts')
+    fetch('/api/tags')
       .then(res => res.json())
       .then(data => {
-        console.log("CartForm: Fetched carts for tags", data);
+        console.log("CartForm: Fetched tags", data);
         if (Array.isArray(data)) {
-          const tagsMap = new Map<string, string>();
-          data.forEach(c => {
-            try {
-              const tags = typeof c.tags === 'string' ? JSON.parse(c.tags || '[]') : (Array.isArray(c.tags) ? c.tags : []);
-              if (Array.isArray(tags)) {
-                tags.forEach(t => {
-                  if (typeof t === 'object' && t !== null && t.tag && t.name) {
-                    tagsMap.set(t.tag.toUpperCase(), t.name);
-                  } else if (typeof t === 'string') {
-                    tagsMap.set(t.toUpperCase(), t);
-                  }
-                });
-              }
-            } catch(e) {}
-          });
-          const tagsList = Array.from(tagsMap.entries()).map(([tag, name]) => ({ tag, name }));
-          console.log("CartForm: Available tags", tagsList);
-          setAvailableTags(tagsList);
+          setAvailableTags(data);
         }
       })
       .catch(console.error);
@@ -99,20 +82,25 @@ export default function CartForm() {
       const method = isEdit ? 'PUT' : 'POST';
       const url = isEdit ? `/api/carts/${cartId}` : '/api/carts';
       
+      const submissionData = { ...formData };
+      if (!isEdit && !submissionData.imageUrl) {
+        submissionData.imageUrl = getRandomFoodImage(formData.name || 'foodcart');
+      }
+
       const res = await fetch(url, {
         method,
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(submissionData)
       });
       
       if (res.ok) {
         const data = await res.json();
         const cartId = isEdit ? id : data.id;
         window.dispatchEvent(new Event('carts-updated'));
-        navigate(`/cart/${cartId}`);
+        navigate(`/pod/${formData.podId}?slideshow=${cartId}`);
       } else {
         const data = await res.json();
         setErrorMsg(data.error || 'Failed to save cart');

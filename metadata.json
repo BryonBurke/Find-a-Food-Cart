@@ -3,6 +3,7 @@
   "description": "Food cart pod explorer",
   "requestFramePermissions": [
     "geolocation",
-    "camera"
+    "camera",
+    "microphone"
   ]
 }

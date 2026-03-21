@@ -80,6 +80,22 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // CSP Middleware
+  app.use((req, res, next) => {
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self'; " +
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https://*.googleapis.com https://*.google.com https://cdn.jsdelivr.net; " +
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; " +
+      "img-src 'self' data: blob: https://*.googleapis.com https://*.google.com https://*.gstatic.com https://picsum.photos https://*.picsum.photos https://fastly.picsum.photos https://firebasestorage.googleapis.com https://*.firebasestorage.googleapis.com https://firebase-storage.googleapis.com https://*.firebase-storage.googleapis.com https://*.firebasestorage.app https://*.run.app; " +
+      "font-src 'self' https://fonts.gstatic.com; " +
+      "connect-src 'self' https://*.googleapis.com https://*.google.com https://*.firebaseio.com https://firebasestorage.googleapis.com https://*.firebasestorage.googleapis.com https://firebase-storage.googleapis.com https://*.firebase-storage.googleapis.com https://*.firebasestorage.app https://*.run.app wss://*.run.app:* blob:; " +
+      "frame-src 'self' https://*.firebaseapp.com https://*.google.com; " +
+      "worker-src 'self' blob:;"
+    );
+    next();
+  });
+
   app.use(express.json({ limit: '5mb' }));
   app.use(express.urlencoded({ limit: '5mb', extended: true }));
 
@@ -320,10 +336,74 @@ async function startServer() {
     }
   });
 
-  app.get("/api/carts", async (req, res) => {
+  app.get("/api/tags", async (req, res) => {
     try {
       const snapshot = await getDb().collection("carts").limit(1000).get();
-      let carts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const tagsMap = new Map<string, string>();
+      snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        if (data.deletedAt && req.query.includeDeleted !== 'true') return;
+        try {
+          const tags = typeof data.tags === 'string' ? JSON.parse(data.tags || '[]') : (Array.isArray(data.tags) ? data.tags : []);
+          if (Array.isArray(tags)) {
+            tags.forEach(t => {
+              if (typeof t === 'object' && t !== null && t.name && t.tag) {
+                const shortTag = t.tag.toUpperCase();
+                const fullName = t.name;
+                if (!tagsMap.has(shortTag) || fullName.length > tagsMap.get(shortTag)!.length) {
+                  tagsMap.set(shortTag, fullName);
+                }
+              }
+            });
+          }
+        } catch(e) {}
+      });
+      const result = Array.from(tagsMap.entries()).map(([tag, name]) => ({ tag, name })).sort((a, b) => a.name.localeCompare(b.name));
+      res.json(result);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  app.get("/api/carts", async (req, res) => {
+    try {
+      const { minLat, maxLat, minLng, maxLng, tag } = req.query;
+      let query: any = getDb().collection("carts");
+      
+      // If a tag is provided, we ignore the bounding box to allow global search
+      if (!tag && minLat && maxLat) {
+        query = query.where("latitude", ">=", parseFloat(minLat as string))
+                     .where("latitude", "<=", parseFloat(maxLat as string));
+      }
+      
+      const snapshot = await query.limit(1000).get();
+      let carts = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+      
+      if (!tag && minLng && maxLng) {
+        const minL = parseFloat(minLng as string);
+        const maxL = parseFloat(maxLng as string);
+        carts = carts.filter((c: any) => c.longitude >= minL && c.longitude <= maxL);
+      }
+
+      if (tag) {
+        const search = (tag as string).toUpperCase();
+        carts = carts.filter((c: any) => {
+          try {
+            const tags = typeof c.tags === 'string' ? JSON.parse(c.tags || '[]') : (Array.isArray(c.tags) ? c.tags : []);
+            if (!Array.isArray(tags)) return false;
+            return tags.some(t => {
+              if (typeof t === 'string') return t.toUpperCase().includes(search);
+              if (typeof t === 'object' && t !== null) {
+                return (t.name && t.name.toUpperCase().includes(search)) || 
+                       (t.tag && t.tag.toUpperCase().includes(search));
+              }
+              return false;
+            });
+          } catch(e) { return false; }
+        });
+      }
+      
       if (req.query.includeDeleted !== 'true') {
         carts = carts.filter((c: any) => !c.deletedAt);
       }
@@ -545,7 +625,8 @@ async function startServer() {
             VITE_FIREBASE_MESSAGING_SENDER_ID: ${JSON.stringify(process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "")},
             VITE_FIREBASE_APP_ID: ${JSON.stringify(process.env.VITE_FIREBASE_APP_ID || "")},
             VITE_GOOGLE_MAPS_API_KEY: ${JSON.stringify(process.env.VITE_GOOGLE_MAPS_API_KEY || "")},
-            VITE_GOOGLE_MAPS_MAP_ID: ${JSON.stringify(process.env.VITE_GOOGLE_MAPS_MAP_ID || "")}
+            VITE_GOOGLE_MAPS_MAP_ID: ${JSON.stringify(process.env.VITE_GOOGLE_MAPS_MAP_ID || "")},
+            VITE_GEMINI_API_KEY: ${JSON.stringify(process.env.GEMINI_API_KEY || "")}
           };
         </script>`;
         

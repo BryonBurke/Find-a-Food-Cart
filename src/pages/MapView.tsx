@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { APIProvider, Map as GoogleMap, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import { MapPin, Plus, Edit2, Trash2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Utensils, Info, Camera, Star, Instagram, Globe, FileText, ExternalLink, Navigation, X, Clock, Map as MapIcon, List, Play, Square, Search, Menu, Mic, File } from 'lucide-react';
@@ -21,6 +21,7 @@ export default function MapView() {
   const [pods, setPods] = useState<Pod[]>([]);
   const [carts, setCarts] = useState<Cart[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [mapBounds, setMapBounds] = useState<{minLat: number, maxLat: number, minLng: number, maxLng: number} | null>(null);
   const searchTag = searchParams.get('tag') || '';
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [isWatchingLocation, setIsWatchingLocation] = useState(true);
@@ -42,6 +43,10 @@ export default function MapView() {
   const [showWelcomeTip, setShowWelcomeTip] = useState(() => {
     return localStorage.getItem('hideWelcomeTip') !== 'true';
   });
+
+  const handlePanComplete = useCallback(() => {
+    setMapTypeId('roadmap');
+  }, []);
 
   const [zoomLevel, setZoomLevel] = useState(13);
 
@@ -121,7 +126,7 @@ export default function MapView() {
     }
   };
 
-  const handleRouteFetched = (route: google.maps.DirectionsRoute) => {
+  const handleRouteFetched = useCallback((route: google.maps.DirectionsRoute) => {
     setRouteData(route);
     if (route.legs[0] && !navState.isActive) {
       const points = route.legs[0].steps.flatMap((step, idx) => 
@@ -134,7 +139,7 @@ export default function MapView() {
       );
       setNavState(prev => ({ ...prev, points, currentIndex: 0 }));
     }
-  };
+  }, [navState.isActive]);
 
   const handlePodDragEnd = async (podId: string, lat: number, lng: number) => {
     if (!user) return;
@@ -162,8 +167,10 @@ export default function MapView() {
 
   const fetchPods = async () => {
     try {
+      console.log('Fetching pods...');
       const res = await fetch('/api/pods');
       const data = await res.json();
+      console.log('Pods data:', data);
       if (Array.isArray(data)) {
         setPods(data);
         setFetchError(null);
@@ -172,14 +179,29 @@ export default function MapView() {
         setPods([]);
       }
     } catch (err) {
+      console.error('Error fetching pods:', err);
       setFetchError((err as Error).message);
       setPods([]);
     }
   };
 
-  const fetchCarts = async () => {
+  const fetchCarts = async (bounds?: {minLat: number, maxLat: number, minLng: number, maxLng: number}, tag?: string) => {
     try {
-      const res = await fetch('/api/carts');
+      let url = '/api/carts';
+      const params = new URLSearchParams();
+      if (bounds) {
+        params.append('minLat', bounds.minLat.toString());
+        params.append('maxLat', bounds.maxLat.toString());
+        params.append('minLng', bounds.minLng.toString());
+        params.append('maxLng', bounds.maxLng.toString());
+      }
+      if (tag) {
+        params.append('tag', tag);
+      }
+      const qs = params.toString();
+      if (qs) url += `?${qs}`;
+      
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
       if (Array.isArray(data)) {
@@ -196,19 +218,37 @@ export default function MapView() {
 
   useEffect(() => {
     fetchPods();
-    fetchCarts();
+    // Initial fetch without bounds to populate some carts, 
+    // or we can wait for mapBounds. Let's wait for mapBounds.
   }, []);
+
+  useEffect(() => {
+    if (!mapBounds) return;
+    const timer = setTimeout(() => {
+      if (searchTag) {
+        fetchCarts(mapBounds, searchTag);
+      } else {
+        setCarts([]);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [mapBounds, searchTag]);
 
   useEffect(() => {
     if (!isWatchingLocation) return;
     let lastLoc: [number, number] | null = null;
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
-        const newLoc: [number, number] = [pos.coords.latitude, pos.coords.longitude];
-        if (!lastLoc || getDistance(lastLoc[0], lastLoc[1], newLoc[0], newLoc[1]) > 5) {
-          lastLoc = newLoc;
-          setUserLocation(newLoc);
-        }
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        
+        setUserLocation(prev => {
+          if (!prev) return [lat, lng];
+          if (getDistance(prev[0], prev[1], lat, lng) > 5) {
+            return [lat, lng];
+          }
+          return prev;
+        });
       },
       (err) => {
         console.warn("Geolocation error:", err);
@@ -331,7 +371,21 @@ export default function MapView() {
           mapId={getEnv('VITE_GOOGLE_MAPS_MAP_ID') || "DEMO_MAP_ID"}
           mapTypeId={mapTypeId}
           onMapTypeIdChanged={(e) => setMapTypeId(e.map.getMapTypeId())}
+          onBoundsChanged={(e) => {
+            const b = e.map.getBounds();
+            if (b) {
+              const ne = b.getNorthEast();
+              const sw = b.getSouthWest();
+              setMapBounds({
+                minLat: sw.lat(),
+                maxLat: ne.lat(),
+                minLng: sw.lng(),
+                maxLng: ne.lng()
+              });
+            }
+          }}
           onClick={(e) => {
+            console.log('Map clicked at:', e.detail.latLng?.lat, e.detail.latLng?.lng);
             if (isAddingPod && e.detail.latLng) {
               setTempMarker([e.detail.latLng.lat, e.detail.latLng.lng]);
               nextStep('CLICK_MAP', 'CLICK_POD_PIN');
@@ -365,12 +419,12 @@ export default function MapView() {
             }
           }}
           disableDefaultUI={true}
-          gestureHandling="greedy"
+          gestureHandling={navTarget ? "none" : "greedy"}
           style={{ width: '100%', height: '100%' }}
         >
           <MapZoomListener />
           <MapFitter pods={filteredPods} searchTag={searchTag} />
-          <MapPanner location={userLocation} isActive={navState.isActive} panTrigger={panTrigger} resetTrigger={resetTrigger} onPanComplete={() => setMapTypeId('roadmap')} />
+          <MapPanner location={userLocation} isActive={navState.isActive} panTrigger={panTrigger} resetTrigger={resetTrigger} onPanComplete={handlePanComplete} />
 
           {fetchError && (
             <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl shadow-lg z-[3000] max-w-md text-center">
@@ -411,8 +465,13 @@ export default function MapView() {
                   }
                 }}
                 onClick={() => {
-                  if (isDragging) return;
+                  console.log('Pod marker clicked:', pod.id, pod.name);
+                  if (isDragging) {
+                    console.log('Click ignored because isDragging is true');
+                    return;
+                  }
                   const podCarts = carts.filter(c => c.podId === pod.id);
+                  console.log('Pod carts found:', podCarts.length);
                   if (podCarts.length === 1) {
                     navigate(`/pod/${pod.id}?cart=${podCarts[0].id}`);
                   } else if (searchTag) {
@@ -424,9 +483,14 @@ export default function MapView() {
               >
                 <div 
                   className="marker-container relative flex flex-col items-center group z-10 cursor-pointer"
-                  style={{ touchAction: 'none', WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
+                  style={{ touchAction: 'auto', WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
                   onContextMenu={(e) => {
                     e.preventDefault();
+                  }}
+                  onClick={(e) => {
+                    console.log('Pod div clicked:', pod.id);
+                    // We don't stop propagation here to let the marker handle it, 
+                    // but we log it to see if it's firing.
                   }}
                   draggable={false}
                 >
@@ -442,7 +506,9 @@ export default function MapView() {
           {tempMarker && (
             <AdvancedMarker 
               position={{ lat: tempMarker[0], lng: tempMarker[1] }}
+              gmpClickable={true}
               onClick={() => {
+                console.log('Temp marker clicked:', tempMarker);
                 nextStep('CLICK_POD_PIN', 'FILL_POD_FORM');
                 navigate(`/pod/new?lat=${tempMarker[0]}&lng=${tempMarker[1]}`);
               }}

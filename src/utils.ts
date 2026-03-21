@@ -1,4 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { storage } from './firebase';
 
 export const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const R = 6371e3;
@@ -11,57 +13,51 @@ export const getDistance = (lat1: number, lon1: number, lat2: number, lon2: numb
   return R * c;
 };
 
-export const fileToDataUrl = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        
-        const MAX_SIZE = 840;
-        
-        if (width > height) {
-          if (width > MAX_SIZE) {
-            height *= MAX_SIZE / width;
-            width = MAX_SIZE;
-          }
-        } else {
-          if (height > MAX_SIZE) {
-            width *= MAX_SIZE / height;
-            height = MAX_SIZE;
-          }
-        }
-        
-        canvas.width = width;
-        canvas.height = height;
-        
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          resolve(reader.result as string);
-          return;
-        }
-        
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        let quality = 0.7;
-        let dataUrl = canvas.toDataURL('image/jpeg', quality);
-        
-        while (dataUrl.length > 800000 && quality > 0.1) {
-          quality -= 0.1;
-          dataUrl = canvas.toDataURL('image/jpeg', quality);
-        }
-        
-        resolve(dataUrl);
-      };
-      img.onerror = () => resolve(reader.result as string);
-      img.src = reader.result as string;
+export const uploadFileToStorage = async (file: File): Promise<string> => {
+  const uploadPromise = (async () => {
+    const name = file.name || `upload_${Date.now()}.jpg`;
+    const fileExtension = name.split('.').pop() || 'jpg';
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExtension}`;
+    const storageRef = ref(storage, `uploads/${fileName}`);
+    
+    console.log(`Starting upload for ${name} (${file.size} bytes)`);
+    
+    // Upload the file directly to Firebase Storage with metadata
+    const metadata = {
+      contentType: file.type || 'image/jpeg'
     };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+    
+    return new Promise<string>((resolve, reject) => {
+      const uploadTask = uploadBytesResumable(storageRef, file, metadata);
+      
+      uploadTask.on('state_changed', 
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          console.log(`Upload is ${progress}% done. State: ${snapshot.state}`);
+        }, 
+        (error) => {
+          console.error("Upload failed in state_changed:", error);
+          reject(error);
+        }, 
+        async () => {
+          console.log("Upload successful, getting download URL...");
+          try {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            resolve(downloadURL);
+          } catch (err) {
+            console.error("Failed to get download URL:", err);
+            reject(err);
+          }
+        }
+      );
+    });
+  })();
+
+  const timeoutPromise = new Promise<string>((_, reject) => 
+    setTimeout(() => reject(new Error("Upload timed out after 120 seconds")), 120000)
+  );
+
+  return Promise.race([uploadPromise, timeoutPromise]);
 };
 
 export function isCartOpen(openTime?: string, closeTime?: string): boolean {
@@ -109,8 +105,15 @@ export const getTwoLineName = (name: string) => {
 export const checkContentSafety = async (text: string) => {
   if (!text || text.trim() === '') return { isHateful: false, reason: '' };
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    const response = await ai.models.generateContent({
+    const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
+    if (!apiKey) {
+      console.warn("GEMINI_API_KEY not found, skipping safety check");
+      return { isHateful: false, reason: '' };
+    }
+    const ai = new GoogleGenAI({ apiKey });
+    
+    // Add a timeout to the safety check
+    const safetyPromise = ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Analyze the following text for hate speech, racism, anti-LGBTQ+ sentiment, or other highly offensive content. Text: "${text}"`,
       config: {
@@ -125,10 +128,22 @@ export const checkContentSafety = async (text: string) => {
         }
       }
     });
+
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("Safety check timed out")), 10000)
+    );
+
+    const response = await Promise.race([safetyPromise, timeoutPromise]) as any;
     const result = JSON.parse(response.text || '{"isHateful": false, "reason": ""}');
     return result;
   } catch (err) {
     console.error("Safety check failed:", err);
     return { isHateful: false, reason: '' };
   }
+};
+
+export const getRandomFoodImage = (seed: string) => {
+  const keywords = ['food', 'restaurant', 'cart', 'streetfood', 'meal', 'cooking'];
+  const randomKeyword = keywords[Math.floor(Math.random() * keywords.length)];
+  return `https://picsum.photos/seed/${encodeURIComponent(seed + '-' + randomKeyword)}/1200/800`;
 };

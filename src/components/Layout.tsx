@@ -173,65 +173,21 @@ export function Header() {
   const podIdMatch = location.pathname.match(/^\/pod\/([^/]+)/);
   const podId = podIdMatch && podIdMatch[1] !== 'new' ? podIdMatch[1] : undefined;
   
-  const [carts, setCarts] = useState<Cart[]>([]);
+  const [availableTags, setAvailableTags] = useState<{name: string, tag: string}[]>([]);
   
   useEffect(() => {
-    const loadCarts = () => {
-      fetch('/api/carts')
+    const loadTags = () => {
+      fetch('/api/tags')
         .then(res => res.json())
         .then(data => {
-          if (Array.isArray(data)) setCarts(data);
+          if (Array.isArray(data)) setAvailableTags(data);
         })
         .catch(console.error);
     };
-    loadCarts();
-    window.addEventListener('carts-updated', loadCarts);
-    return () => window.removeEventListener('carts-updated', loadCarts);
+    loadTags();
+    window.addEventListener('carts-updated', loadTags);
+    return () => window.removeEventListener('carts-updated', loadTags);
   }, []);
-
-  const availableTags = useMemo(() => {
-    const tagsSet = new Set<string>();
-    const tagToNameMap = new Map<string, string>();
-
-    carts.forEach(c => {
-      try {
-        const tags = typeof c.tags === 'string' ? JSON.parse(c.tags || '[]') : (Array.isArray(c.tags) ? c.tags : []);
-        if (Array.isArray(tags)) {
-          tags.forEach(t => {
-            if (typeof t === 'object' && t !== null && t.tag && t.name) {
-              const shortTag = t.tag.toUpperCase();
-              const fullName = t.name;
-              if (!tagToNameMap.has(shortTag) || fullName.length > tagToNameMap.get(shortTag)!.length) {
-                tagToNameMap.set(shortTag, fullName);
-              }
-            }
-          });
-        }
-      } catch(e) {}
-    });
-
-    carts.forEach(c => {
-      try {
-        const tags = typeof c.tags === 'string' ? JSON.parse(c.tags || '[]') : (Array.isArray(c.tags) ? c.tags : []);
-        if (Array.isArray(tags)) {
-          tags.forEach(t => {
-            if (typeof t === 'string') {
-              const upper = t.toUpperCase();
-              tagsSet.add(tagToNameMap.get(upper) || t);
-            } else if (typeof t === 'object' && t !== null) {
-              if (t.name) {
-                tagsSet.add(t.name);
-              } else if (t.tag) {
-                const upper = t.tag.toUpperCase();
-                tagsSet.add(tagToNameMap.get(upper) || t.tag);
-              }
-            }
-          });
-        }
-      } catch(e) {}
-    });
-    return Array.from(tagsSet).sort();
-  }, [carts]);
 
   const searchTag = searchParams.get('tag') || '';
   const setSearchTag = (tag: string) => {
@@ -289,8 +245,8 @@ export function Header() {
                   onChange={e => setSearchTag(e.target.value)}
                 >
                   <option value="">All Food Types</option>
-                  {availableTags.map(tag => (
-                    <option key={tag} value={tag}>{tag}</option>
+                  {availableTags.map(t => (
+                    <option key={t.tag} value={t.tag}>{t.name}</option>
                   ))}
                 </select>
                 <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
@@ -311,39 +267,73 @@ export function PermissionsGate({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<'pending' | 'done'>('pending');
 
   useEffect(() => {
+    let isMounted = true;
+    const timeoutId = setTimeout(() => {
+      if (isMounted) setStatus('done');
+    }, 8000); // Global 8s timeout for permissions
+
     const requestPermissions = async () => {
       try {
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-          stream.getTracks().forEach(track => track.stop());
+          // Try video first
+          try {
+            const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            videoStream.getTracks().forEach(track => track.stop());
+          } catch (vErr) {
+            console.warn("Camera permission denied:", vErr);
+          }
+          
+          // Then try audio
+          try {
+            const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioStream.getTracks().forEach(track => track.stop());
+          } catch (aErr) {
+            console.warn("Microphone permission denied:", aErr);
+          }
         }
       } catch (err) {
-        console.warn("Camera permission denied or error:", err);
+        console.warn("Permissions request error:", err);
       }
 
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           () => {
-            setStatus('done');
+            clearTimeout(timeoutId);
+            if (isMounted) setStatus('done');
           },
           () => {
-            setStatus('done');
+            clearTimeout(timeoutId);
+            if (isMounted) setStatus('done');
           },
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
         );
       } else {
-        setStatus('done');
+        clearTimeout(timeoutId);
+        if (isMounted) setStatus('done');
       }
     };
 
     requestPermissions();
+    return () => { isMounted = false; clearTimeout(timeoutId); };
   }, []);
 
   if (status === 'pending') {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-stone-100 gap-4">
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-stone-100 gap-6 p-6 text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
-        <p className="text-stone-600 font-medium">Requesting camera and location permissions...</p>
+        <div className="space-y-2">
+          <p className="text-stone-900 font-bold text-lg">Setting up your experience...</p>
+          <p className="text-stone-500 text-sm max-w-xs">We're requesting camera and location permissions to help you find and document food carts.</p>
+          <p className="text-emerald-600 text-xs mt-4 bg-emerald-50 p-3 rounded-xl border border-emerald-100">
+            <strong>Tip:</strong> If permissions are blocked, try opening the app in a <strong>new tab</strong> using the button in the top right menu.
+          </p>
+        </div>
+        <button 
+          onClick={() => setStatus('done')}
+          className="mt-4 text-emerald-600 font-bold hover:underline"
+        >
+          Skip for now
+        </button>
       </div>
     );
   }

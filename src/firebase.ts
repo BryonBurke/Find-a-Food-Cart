@@ -1,12 +1,13 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 import { getEnv } from './env';
 
 const firebaseConfig = {
   apiKey: getEnv('VITE_FIREBASE_API_KEY'),
   authDomain: getEnv('VITE_FIREBASE_AUTH_DOMAIN'),
   projectId: getEnv('VITE_FIREBASE_PROJECT_ID'),
-  storageBucket: getEnv('VITE_FIREBASE_STORAGE_BUCKET'),
+  storageBucket: getEnv('VITE_FIREBASE_STORAGE_BUCKET')?.replace('gs://', ''),
   messagingSenderId: getEnv('VITE_FIREBASE_MESSAGING_SENDER_ID'),
   appId: getEnv('VITE_FIREBASE_APP_ID')
 };
@@ -54,3 +55,4 @@ if (!firebaseConfig.apiKey) {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+export const storage = getStorage(app);

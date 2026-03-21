@@ -14,12 +14,32 @@ export default function PodPage() {
   const { nextStep } = useTutorial();
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const slideshowParam = searchParams.get('slideshow');
   const [pod, setPod] = useState<Pod | null>(null);
   const [carts, setCarts] = useState<Cart[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [cartToDelete, setCartToDelete] = useState<Cart | null>(null);
+
+  useEffect(() => {
+    if (slideshowParam && carts.length > 0) {
+      const index = carts.findIndex(c => String(c.id) === String(slideshowParam));
+      if (index !== -1) {
+        setSlideshowIndex(index);
+      }
+    }
+  }, [slideshowParam, carts]);
+
+  const closeSlideshow = () => {
+    setSlideshowIndex(null);
+    if (slideshowParam) {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('slideshow');
+      setSearchParams(newParams, { replace: true });
+    }
+  };
 
   const deleteCart = async (cart: Cart) => {
     if (!user) return;
@@ -61,35 +81,26 @@ export default function PodPage() {
   };
 
   useEffect(() => {
+    console.log('PodPage id:', id);
     const fetchData = async () => {
       try {
         const podRes = await fetch(`/api/pods/${id}`);
         const podData = await podRes.json();
+        console.log('Pod data:', podData);
         setPod(podData);
 
         const cartsRes = await fetch(`/api/pods/${id}/carts`);
         const cartsData = await cartsRes.json();
+        console.log('Carts data:', cartsData);
         setCarts(Array.isArray(cartsData) ? cartsData : []);
       } catch (err) {
-        console.error(err);
+        console.error('Error fetching pod data:', err);
       } finally {
         setLoading(false);
       }
     };
     fetchData();
   }, [id]);
-
-  const [searchParams] = useSearchParams();
-  const cartIdParam = searchParams.get('cart');
-
-  useEffect(() => {
-    if (cartIdParam && carts.length > 0) {
-      const index = carts.findIndex(c => c.id === cartIdParam);
-      if (index !== -1) {
-        setSlideshowIndex(index);
-      }
-    }
-  }, [cartIdParam, carts]);
 
   const [selectedCartForMenu, setSelectedCartForMenu] = useState<Cart | null>(null);
   const [slideshowIndex, setSlideshowIndex] = useState<number | null>(null);
@@ -333,12 +344,12 @@ export default function PodPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 pt-[72px] p-4 sm:p-6 pb-8 bg-black z-[1500] flex items-center justify-center"
-            onClick={() => setSlideshowIndex(null)}
+            onClick={closeSlideshow}
           >
             <div className="bg-black rounded-3xl w-full h-full relative overflow-hidden shadow-2xl border border-white/10" onClick={(e) => e.stopPropagation()}>
               <button 
                 className="absolute top-[150px] right-4 bg-black text-white p-2 rounded-full shadow-lg transition-colors z-[5001]"
-                onClick={() => setSlideshowIndex(null)}
+                onClick={(e) => { e.stopPropagation(); closeSlideshow(); }}
               >
                 <X size={32} />
               </button>
@@ -383,6 +394,14 @@ export default function PodPage() {
                       className="bg-emerald-600 text-white px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-500 transition-colors text-sm sm:text-base"
                     >
                       <MapPin size={18} /> Pod Map
+                    </button>
+                  )}
+                  {!carts[slideshowIndex].ownerEmail && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); navigate(`/cart/${carts[slideshowIndex].id}/claim`); setSlideshowIndex(null); }}
+                      className="bg-stone-800 text-white px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-stone-700 transition-colors text-sm sm:text-base"
+                    >
+                      <Star size={18} /> Cart Owner
                     </button>
                   )}
                   {!!user && !!user.uid && !user.isAnonymous && editMode && (
