@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { ChevronLeft, MapPin, Star, Info, Edit2, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, Info, Edit2, Plus, Trash2 } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { Pod, Cart } from '../types';
 import { useAuth } from '../AuthContext';
@@ -97,152 +97,157 @@ export default function PodPage() {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="max-w-4xl mx-auto p-4 pb-24"
+      className="h-screen flex flex-col bg-stone-50 overflow-hidden"
     >
-      <AnimatePresence>
-        {showDeletePodConfirm && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[3000] flex items-center justify-center p-4"
-          >
+      <div className="max-w-4xl mx-auto w-full flex flex-col h-full p-4">
+        <AnimatePresence>
+          {showDeletePodConfirm && (
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[3000] flex items-center justify-center p-4"
             >
-              <h3 className="text-2xl font-bold mb-4 text-stone-900">Delete Pod?</h3>
-              <p className="text-stone-600 mb-8">
-                Are you sure you want to delete <span className="font-bold text-stone-900">"{pod.name}"</span>? 
-                This will delete the pod and all its carts. This action cannot be undone.
-              </p>
-              <div className="flex flex-col gap-3">
-                <button 
-                  onClick={deletePod}
-                  className="w-full bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-100"
-                >
-                  Yes, Delete Pod
-                </button>
-                <button 
-                  onClick={() => setShowDeletePodConfirm(false)}
-                  className="w-full bg-stone-100 text-stone-600 py-3 rounded-xl font-bold hover:bg-stone-200 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl"
+              >
+                <h3 className="text-2xl font-bold mb-4 text-stone-900">Delete Pod?</h3>
+                <p className="text-stone-600 mb-8">
+                  Are you sure you want to delete <span className="font-bold text-stone-900">"{pod.name}"</span>? 
+                  This will delete the pod and all its carts. This action cannot be undone.
+                </p>
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={deletePod}
+                    className="w-full bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-100"
+                  >
+                    Yes, Delete Pod
+                  </button>
+                  <button 
+                    onClick={() => setShowDeletePodConfirm(false)}
+                    className="w-full bg-stone-100 text-stone-600 py-3 rounded-xl font-bold hover:bg-stone-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
+          )}
 
-        {cartToDelete && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[3000] flex items-center justify-center p-4"
-          >
+          {cartToDelete && (
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[3000] flex items-center justify-center p-4"
             >
-              <h3 className="text-2xl font-bold mb-4 text-stone-900">Delete Cart?</h3>
-              <p className="text-stone-600 mb-8">
-                Are you sure you want to delete <span className="font-bold text-stone-900">"{cartToDelete.name}"</span>? 
-                This action cannot be undone.
-              </p>
-              <div className="flex flex-col gap-3">
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl"
+              >
+                <h3 className="text-2xl font-bold mb-4 text-stone-900">Delete Cart?</h3>
+                <p className="text-stone-600 mb-8">
+                  Are you sure you want to delete <span className="font-bold text-stone-900">"{cartToDelete.name}"</span>? 
+                  This action cannot be undone.
+                </p>
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={() => deleteCart(cartToDelete.id)}
+                    className="w-full bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-100"
+                  >
+                    Yes, Delete Cart
+                  </button>
+                  <button 
+                    onClick={() => setCartToDelete(null)}
+                    className="w-full bg-stone-100 text-stone-600 py-3 rounded-xl font-bold hover:bg-stone-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="flex-shrink-0 mb-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <button onClick={() => navigate('/')} className="p-2 hover:bg-stone-200 rounded-full transition-colors">
+              <ChevronLeft size={24} />
+            </button>
+            {canEdit && editMode && (
+              <div className="flex gap-1">
                 <button 
-                  onClick={() => deleteCart(cartToDelete.id)}
-                  className="w-full bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-100"
+                  onClick={() => navigate(`/pod/${id}/edit`)}
+                  className="p-2 hover:bg-stone-200 rounded-full transition-colors text-stone-600"
                 >
-                  Yes, Delete Cart
+                  <Edit2 size={20} />
                 </button>
                 <button 
-                  onClick={() => setCartToDelete(null)}
-                  className="w-full bg-stone-100 text-stone-600 py-3 rounded-xl font-bold hover:bg-stone-200 transition-colors"
+                  onClick={() => setShowDeletePodConfirm(true)}
+                  className="p-2 hover:bg-red-100 rounded-full transition-colors text-red-600"
                 >
-                  Cancel
+                  <Trash2 size={20} />
                 </button>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/')} className="p-2 hover:bg-stone-200 rounded-full transition-colors">
-            <ChevronLeft size={24} />
-          </button>
-          <div>
-            <h1 className="text-3xl md:text-5xl font-black text-stone-900 tracking-tight">{pod.name}</h1>
-            <div className="flex items-center gap-1.5 text-stone-500 font-medium mt-1">
-              <MapPin size={16} className="text-emerald-500" />
+            )}
+          </div>
+
+          <div className="px-2">
+            <h1 className="text-3xl md:text-5xl font-black text-stone-900 tracking-tight leading-tight mb-1">
+              {pod.name}
+            </h1>
+            <div className="text-stone-500 font-medium mb-4 text-sm md:text-base">
               {pod.address}
+            </div>
+            
+            <div className="flex gap-2">
+              <button 
+                onClick={() => navigate(`/pod/${id}/map`)}
+                className="flex-1 bg-black text-white py-3 rounded-full shadow-lg border border-white/10 font-black text-xs md:text-sm uppercase tracking-widest transition-all hover:bg-stone-900 active:scale-[0.98] text-center"
+              >
+                Map
+              </button>
+              <button 
+                onClick={() => navigate(`/?navTo=${pod.id}`)}
+                className="flex-1 bg-black text-white py-3 rounded-full shadow-lg border border-white/10 font-black text-xs md:text-sm uppercase tracking-widest transition-all hover:bg-stone-900 active:scale-[0.98] text-center"
+              >
+                Directions
+              </button>
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
-          {canEdit && editMode && (
-            <>
-              <button 
-                onClick={() => navigate(`/pod/${id}/edit`)}
-                className="p-2 hover:bg-stone-200 rounded-full transition-colors text-stone-600"
-              >
-                <Edit2 size={20} />
-              </button>
-              <button 
-                onClick={() => setShowDeletePodConfirm(true)}
-                className="p-2 hover:bg-red-100 rounded-full transition-colors text-red-600"
-              >
-                <Trash2 size={20} />
-              </button>
-            </>
+
+        <div className="flex-1 overflow-y-auto min-h-0 space-y-6 pr-2 -mr-2 scrollbar-hide">
+          {pod.description && (
+            <section className="bg-white rounded-3xl p-6 shadow-sm border border-stone-100">
+              <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
+                <Info size={20} className="text-emerald-600" /> About
+              </h2>
+              <p className="text-stone-600 text-sm leading-relaxed">{pod.description}</p>
+            </section>
           )}
-          <button 
-            onClick={() => navigate(`/pod/${id}/map`)}
-            className="bg-black text-white px-[4vmin] py-[2.5vmin] rounded-full shadow-2xl border border-white/10 font-black text-[3vmin] md:text-[2vmin] uppercase tracking-widest transition-colors hover:bg-stone-900"
-          >
-            Map
-          </button>
-          <button 
-            onClick={() => navigate(`/?navTo=${pod.id}`)}
-            className="bg-black text-white px-[4vmin] py-[2.5vmin] rounded-full shadow-2xl border border-white/10 font-black text-[3vmin] md:text-[2vmin] uppercase tracking-widest transition-colors hover:bg-stone-900"
-          >
-            Directions
-          </button>
-        </div>
-      </div>
 
-      <div className="space-y-8 mb-8">
-        {pod.description && (
-          <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-stone-100">
-            <h2 className="text-xl md:text-2xl font-bold mb-4 flex items-center gap-2">
-              <Info size={24} className="text-emerald-600" /> About
-            </h2>
-            <p className="text-stone-600 text-base md:text-lg leading-relaxed">{pod.description}</p>
-          </section>
-        )}
-
-        <section>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl md:text-2xl font-bold text-stone-900">Food Carts</h2>
-            {canEdit && editMode && (
-              <button 
-                onClick={() => navigate(`/pod/${id}/cart/new`)}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-bold hover:bg-emerald-100 transition-colors"
-              >
-                <Plus size={18} />
-                <span className="hidden sm:inline">Add Cart</span>
-              </button>
-            )}
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {carts.map(cart => {
+          <section className="pb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-stone-900">Food Carts</h2>
+              {canEdit && editMode && (
+                <button 
+                  onClick={() => navigate(`/pod/${id}/cart/new`)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-xl font-bold hover:bg-emerald-100 transition-colors text-sm"
+                >
+                  <Plus size={16} />
+                  <span>Add Cart</span>
+                </button>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {carts.map(cart => {
                 const isHighlighted = highlightId === cart.id || 
                   (highlightTag && cart.tags && (
                     typeof cart.tags === 'string' 
@@ -287,27 +292,6 @@ export default function PodPage() {
                     <h3 className="text-xl font-bold text-stone-900 mb-2 group-hover:text-emerald-600 transition-colors line-clamp-1">
                       {cart.name}
                     </h3>
-                    <div className="flex items-center gap-1 text-amber-400 mb-4">
-                      <Star size={18} fill="currentColor" />
-                      <span className="font-bold text-stone-700">{cart.rating}</span>
-                    </div>
-                    {(() => {
-                      try {
-                        const tags = typeof cart.tags === 'string' ? JSON.parse(cart.tags || '[]') : (Array.isArray(cart.tags) ? cart.tags : []);
-                        if (Array.isArray(tags) && tags.length > 0) {
-                          return (
-                            <div className="flex flex-wrap gap-1.5 mt-auto">
-                              {tags.slice(0, 3).map((t: any, i: number) => (
-                                <span key={i} className="bg-stone-100 text-stone-600 px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-stone-200" title={t.name}>
-                                  {typeof t === 'string' ? t.toUpperCase() : (t.tag || t.name).toUpperCase()}
-                                </span>
-                              ))}
-                            </div>
-                          );
-                        }
-                      } catch (e) {}
-                      return null;
-                    })()}
                   </div>
                 </div>
               )})}
@@ -319,6 +303,7 @@ export default function PodPage() {
             </div>
           </section>
         </div>
+      </div>
     </motion.div>
   );
 }

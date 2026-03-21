@@ -17,6 +17,7 @@ export default function CartPage() {
   const [podCarts, setPodCarts] = useState<Cart[]>([]);
   const [loading, setLoading] = useState(true);
   const [fullscreenImageIndex, setFullscreenImageIndex] = useState<number | null>(null);
+  const [showHours, setShowHours] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -109,11 +110,21 @@ export default function CartPage() {
   const prevCart = currentIndex > 0 ? podCarts[currentIndex - 1] : podCarts[podCarts.length - 1];
   const nextCart = currentIndex < podCarts.length - 1 ? podCarts[currentIndex + 1] : podCarts[0];
 
+  const formatTime = (time?: string) => {
+    if (!time) return '';
+    const [hours, minutes] = time.split(':').map(Number);
+    if (isNaN(hours) || isNaN(minutes)) return time;
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const h = hours % 12 || 12;
+    const m = minutes.toString().padStart(2, '0');
+    return `${h}:${m} ${ampm}`;
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="w-full min-h-screen bg-stone-50 pb-[10vh]"
+      className="w-full h-screen bg-black overflow-hidden"
     >
       <AnimatePresence>
         {showDeleteConfirm && (
@@ -160,10 +171,46 @@ export default function CartPage() {
         <div className="absolute top-0 left-0 right-0 p-[4vmin] md:p-[3vmin] z-20 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none">
           <div className="relative flex items-center justify-center min-h-[10vmin]">
             {/* Top Middle: Name (Centered, Full Width potential) */}
-            <div className="max-w-[90%] pointer-events-auto">
+            <div className="max-w-[90%] pointer-events-auto flex flex-col items-center gap-[1.5vmin]">
               <h1 className="bg-black text-white px-[4vmin] py-[1.5vmin] rounded-full shadow-2xl border border-white/10 font-black text-[3.5vmin] md:text-[2.5vmin] uppercase tracking-widest text-center leading-tight">
                 {cart.name}
               </h1>
+              {isCartOpen(cart.openTime, cart.closeTime) && (
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowHours(!showHours)}
+                    className="inline-flex items-center gap-[1vmin] px-[2.5vmin] py-[1vmin] bg-green-500 text-white text-[2.5vmin] md:text-[1.5vmin] font-bold rounded-full uppercase tracking-widest shadow-lg hover:bg-green-600 transition-colors active:scale-95"
+                  >
+                    <span className="w-[1.5vmin] h-[1.5vmin] bg-white rounded-full animate-pulse"></span> Open
+                  </button>
+                  
+                  <AnimatePresence>
+                    {showHours && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-[40]" 
+                          onClick={() => setShowHours(false)}
+                        />
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="absolute top-full mt-[2vmin] left-1/2 -translate-x-1/2 bg-white text-stone-900 p-[3vmin] rounded-[2vmin] shadow-2xl border border-stone-100 min-w-[200px] z-[50]"
+                        >
+                          <div className="text-center">
+                            <p className="text-[2vmin] md:text-[1.2vmin] font-black uppercase tracking-widest text-stone-400 mb-[1vmin]">Hours Today</p>
+                            <p className="text-[3vmin] md:text-[1.8vmin] font-bold text-stone-900 whitespace-nowrap">
+                              {formatTime(cart.openTime)} - {formatTime(cart.closeTime)}
+                            </p>
+                          </div>
+                          {/* Arrow */}
+                          <div className="absolute -top-[1vmin] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[1vmin] border-l-transparent border-r-[1vmin] border-r-transparent border-b-[1vmin] border-b-white"></div>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
             </div>
 
             {/* Top Right: Edit/Delete (Absolutely positioned to not affect centering) */}
@@ -271,83 +318,6 @@ export default function CartPage() {
         </div>
 
         <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
-        
-        <div className="absolute inset-x-0 bottom-[18vmin] p-[4vmin] md:p-[6vmin] pointer-events-none">
-          <div className="flex justify-between items-end pointer-events-auto">
-            <div className="flex flex-col gap-[2vmin]">
-              <div className="flex items-center gap-[2vmin]">
-                {isCartOpen(cart.openTime, cart.closeTime) && (
-                  <span className="inline-flex items-center gap-[1vmin] px-[2.5vmin] py-[1vmin] bg-green-500 text-white text-[2.5vmin] md:text-[1.5vmin] font-bold rounded-full uppercase tracking-widest shadow-lg">
-                    <span className="w-[1.5vmin] h-[1.5vmin] bg-white rounded-full animate-pulse"></span> Open
-                  </span>
-                )}
-              </div>
-              
-              {(() => {
-                try {
-                  const tags = typeof cart.tags === 'string' ? JSON.parse(cart.tags || '[]') : (Array.isArray(cart.tags) ? cart.tags : []);
-                  if (Array.isArray(tags) && tags.length > 1) {
-                    return (
-                      <div className="flex flex-wrap gap-[1.5vmin]">
-                        {tags.slice(1).map((t: any, i: number) => (
-                          <span key={i} className="bg-white/20 backdrop-blur-sm text-white px-[2vmin] py-[1vmin] rounded-[1.5vmin] text-[2.5vmin] md:text-[1.5vmin] font-mono font-bold border border-white/10" title={t.name}>
-                            {typeof t === 'string' ? t.toUpperCase() : (t.tag || t.name).toUpperCase()}
-                          </span>
-                        ))}
-                      </div>
-                    );
-                  }
-                } catch (e) {}
-                return null;
-              })()}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-4xl mx-auto p-4 md:p-8 mt-4">
-        <div className="max-w-2xl space-y-8 mb-8">
-          {cart.description && (
-            <section className="bg-white rounded-3xl p-8 shadow-sm border border-stone-100">
-              <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                <Info size={24} className="text-emerald-600" /> About
-              </h2>
-              <p className="text-stone-600 text-lg leading-relaxed">{cart.description}</p>
-            </section>
-          )}
-
-          {(cart.instagramUrl || cart.websiteUrl) && (
-            <section className="bg-white rounded-3xl p-6 shadow-sm border border-stone-100">
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <Globe size={20} className="text-emerald-600" /> Connect
-              </h2>
-              <div className="space-y-3">
-                {cart.instagramUrl && (
-                  <a 
-                    href={cart.instagramUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-stone-50 transition-colors text-stone-600 hover:text-pink-600"
-                  >
-                    <Instagram size={20} />
-                    <span className="font-medium">Instagram</span>
-                  </a>
-                )}
-                {cart.websiteUrl && (
-                  <a 
-                    href={cart.websiteUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-stone-50 transition-colors text-stone-600 hover:text-emerald-600"
-                  >
-                    <Globe size={20} />
-                    <span className="font-medium">Website</span>
-                  </a>
-                )}
-              </div>
-            </section>
-          )}
-        </div>
       </div>
 
       {fullscreenImageIndex !== null && (
