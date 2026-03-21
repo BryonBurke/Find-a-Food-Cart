@@ -109,11 +109,19 @@ export default function CartPage() {
   const prevCart = currentIndex > 0 ? podCarts[currentIndex - 1] : podCarts[podCarts.length - 1];
   const nextCart = currentIndex < podCarts.length - 1 ? podCarts[currentIndex + 1] : podCarts[0];
 
+  let firstTag = '';
+  try {
+    const tags = typeof cart.tags === 'string' ? JSON.parse(cart.tags || '[]') : (Array.isArray(cart.tags) ? cart.tags : []);
+    if (Array.isArray(tags) && tags.length > 0) {
+      firstTag = typeof tags[0] === 'string' ? tags[0] : (tags[0].tag || tags[0].name);
+    }
+  } catch (e) {}
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="max-w-4xl mx-auto p-4 pb-24"
+      className="w-full min-h-screen bg-stone-50 pb-[10vh]"
     >
       <AnimatePresence>
         {showDeleteConfirm && (
@@ -156,48 +164,66 @@ export default function CartPage() {
         )}
       </AnimatePresence>
 
-      <div className="flex items-center justify-between mb-6">
-        <button onClick={() => {
-          if (cart?.podId) {
-            navigate(`/pod/${cart.podId}`);
-          } else {
-            navigate(-1);
-          }
-        }} className="px-4 py-2 bg-stone-100 text-stone-600 rounded-xl font-bold hover:bg-stone-200 transition-colors">
-          POD
-        </button>
-        <div className="flex gap-2">
-          {!!user && !!user.uid && !user.isAnonymous && canEdit && editMode && (
-            <>
-              <button 
-                onClick={() => {
-                  if (user) {
-                    navigate(`/cart/${id}/edit`);
-                  } else {
-                    navigate('/login');
-                  }
-                }} 
-                className="p-2 hover:bg-stone-200 rounded-full transition-colors text-stone-600"
-              >
-                <Edit2 size={20} />
+      <div className="relative w-full h-[100dvh] overflow-hidden group">
+        <div className="absolute top-0 left-0 right-0 p-[4vmin] md:p-[3vmin] flex items-start justify-between z-20 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none">
+          {/* Top Left: First Food Tag */}
+          <div className="w-1/3 flex justify-start pointer-events-auto">
+            {firstTag ? (
+              <span className="text-white font-bold text-[4vmin] md:text-[2.5vmin] uppercase tracking-widest drop-shadow-md">
+                {firstTag}
+              </span>
+            ) : (
+              <button onClick={() => {
+                if (cart?.podId) {
+                  navigate(`/pod/${cart.podId}`);
+                } else {
+                  navigate(-1);
+                }
+              }} className="px-[3vmin] py-[1.5vmin] text-[3vmin] md:text-[1.5vmin] bg-white/20 backdrop-blur-md text-white rounded-[2vmin] font-bold hover:bg-white/30 transition-colors border border-white/20 shadow-sm">
+                POD
               </button>
-              <button 
-                onClick={() => {
-                  console.log("Client: New delete button clicked");
-                  setShowDeleteConfirm(true);
-                }} 
-                className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors border border-red-200"
-                title="Delete Cart"
-              >
-                <Trash2 size={18} />
-                Delete
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+            )}
+          </div>
 
-      <div className="relative aspect-[3/4] w-full rounded-3xl overflow-hidden mb-8 shadow-2xl group">
+          {/* Top Middle: Name */}
+          <div className="w-1/3 flex justify-center pointer-events-auto">
+            <h1 className="text-[6vmin] md:text-[5vmin] font-black text-white text-center leading-tight drop-shadow-xl">
+              {cart.name}
+            </h1>
+          </div>
+
+          {/* Top Right: Edit/Delete */}
+          <div className="w-1/3 flex justify-end gap-[2vmin] pointer-events-auto">
+            {!!user && !!user.uid && !user.isAnonymous && canEdit && editMode && (
+              <>
+                <button 
+                  onClick={() => {
+                    if (user) {
+                      navigate(`/cart/${id}/edit`);
+                    } else {
+                      navigate('/login');
+                    }
+                  }} 
+                  className="p-[2vmin] bg-white/20 backdrop-blur-md hover:bg-white/30 rounded-full transition-colors text-white border border-white/20 shadow-sm"
+                >
+                  <Edit2 className="w-[4vmin] h-[4vmin]" />
+                </button>
+                <button 
+                  onClick={() => {
+                    console.log("Client: New delete button clicked");
+                    setShowDeleteConfirm(true);
+                  }} 
+                  className="flex items-center gap-[1vmin] px-[3vmin] py-[1.5vmin] text-[3vmin] md:text-[1.5vmin] bg-red-500/80 backdrop-blur-md text-white rounded-[2vmin] font-bold hover:bg-red-600 transition-colors border border-red-500/50 shadow-sm"
+                  title="Delete Cart"
+                >
+                  <Trash2 className="w-[4vmin] h-[4vmin]" />
+                  <span className="hidden sm:inline">Delete</span>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
         <img 
           src={cart.imageUrl || `https://picsum.photos/seed/cart-${cart.id}/1560/2080`} 
           alt={cart.name}
@@ -206,41 +232,88 @@ export default function CartPage() {
         />
         
         {podCarts.length > 1 && prevCart && nextCart && (
-          <>
-            <button
-              onClick={(e) => { e.stopPropagation(); navigate(`/cart/${prevCart.id}`); }}
-              className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white p-3 rounded-full backdrop-blur-md transition-all z-10 opacity-0 group-hover:opacity-100"
-            >
-              <ChevronLeft size={32} />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); navigate(`/cart/${nextCart.id}`); }}
-              className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white p-3 rounded-full backdrop-blur-md transition-all z-10 opacity-0 group-hover:opacity-100"
-            >
-              <ChevronRight size={32} />
-            </button>
-          </>
+          <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-between p-[4vmin] md:p-[6vmin] pointer-events-none">
+            {/* Left Slot: Previous Cart */}
+            <div className="w-[15%] flex justify-start pointer-events-auto">
+              <button
+                onClick={(e) => { e.stopPropagation(); navigate(`/cart/${prevCart.id}`); }}
+                className="bg-black text-white p-[2.5vmin] rounded-full shadow-2xl border border-white/10"
+              >
+                <ChevronLeft className="w-[6vw] h-[6vw] md:w-[4vmin] md:h-[4vmin]" />
+              </button>
+            </div>
+
+            {/* Center Slot: Action Buttons */}
+            <div className="w-[70%] flex items-center justify-center gap-[2vmin] pointer-events-auto">
+              <button 
+                onClick={() => {
+                  if (menuGallery.length > 0) {
+                    setFullscreenImageIndex(0);
+                  } else {
+                    alert('No menu photos provided for this cart.');
+                  }
+                }}
+                className={`bg-black text-white px-[4vmin] py-[2.5vmin] rounded-full shadow-2xl border border-white/10 font-black text-[3vmin] md:text-[2vmin] uppercase tracking-widest transition-colors hover:bg-stone-900 ${menuGallery.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                Menu
+              </button>
+
+              <button 
+                onClick={() => {
+                  if (cart?.podId) {
+                    navigate(`/pod/${cart.podId}`);
+                  } else {
+                    navigate(-1);
+                  }
+                }} 
+                className="bg-black text-white px-[5vmin] py-[3vmin] rounded-full shadow-2xl border border-white/10 font-black text-[4vmin] md:text-[2.5vmin] uppercase tracking-widest transition-colors hover:bg-stone-900"
+              >
+                POD
+              </button>
+
+              {pod && (
+                <button 
+                  onClick={() => navigate(`/pod/${pod.id}/map?highlight=${cart.id}`)}
+                  className="bg-black text-white px-[4vmin] py-[2.5vmin] rounded-full shadow-2xl border border-white/10 font-black text-[3vmin] md:text-[2vmin] uppercase tracking-widest transition-colors hover:bg-stone-900"
+                >
+                  Map
+                </button>
+              )}
+            </div>
+
+            {/* Right Slot: Next Cart */}
+            <div className="w-[15%] flex justify-end pointer-events-auto">
+              <button
+                onClick={(e) => { e.stopPropagation(); navigate(`/cart/${nextCart.id}`); }}
+                className="bg-black text-white p-[2.5vmin] rounded-full shadow-2xl border border-white/10"
+              >
+                <ChevronRight className="w-[6vw] h-[6vw] md:w-[4vmin] md:h-[4vmin]" />
+              </button>
+            </div>
+          </div>
         )}
 
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8 pointer-events-none">
+        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+        
+        <div className="absolute inset-x-0 bottom-[18vmin] p-[4vmin] md:p-[6vmin] pointer-events-none">
           <div className="flex justify-between items-end pointer-events-auto">
-            <div>
-              <div className="flex items-center gap-2 mb-3">
+            <div className="flex flex-col gap-[2vmin]">
+              <div className="flex items-center gap-[2vmin]">
                 {isCartOpen(cart.openTime, cart.closeTime) && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full uppercase tracking-widest shadow-lg">
-                    <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span> Open
+                  <span className="inline-flex items-center gap-[1vmin] px-[2.5vmin] py-[1vmin] bg-green-500 text-white text-[2.5vmin] md:text-[1.5vmin] font-bold rounded-full uppercase tracking-widest shadow-lg">
+                    <span className="w-[1.5vmin] h-[1.5vmin] bg-white rounded-full animate-pulse"></span> Open
                   </span>
                 )}
               </div>
-              <h1 className="text-5xl font-black text-white mb-2">{cart.name}</h1>
+              
               {(() => {
                 try {
                   const tags = typeof cart.tags === 'string' ? JSON.parse(cart.tags || '[]') : (Array.isArray(cart.tags) ? cart.tags : []);
-                  if (Array.isArray(tags) && tags.length > 0) {
+                  if (Array.isArray(tags) && tags.length > 1) {
                     return (
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {tags.map((t: any, i: number) => (
-                          <span key={i} className="bg-white/20 backdrop-blur-sm text-white px-3 py-1 rounded-lg text-xs font-mono font-bold border border-white/10" title={t.name}>
+                      <div className="flex flex-wrap gap-[1.5vmin]">
+                        {tags.slice(1).map((t: any, i: number) => (
+                          <span key={i} className="bg-white/20 backdrop-blur-sm text-white px-[2vmin] py-[1vmin] rounded-[1.5vmin] text-[2.5vmin] md:text-[1.5vmin] font-mono font-bold border border-white/10" title={t.name}>
                             {typeof t === 'string' ? t.toUpperCase() : (t.tag || t.name).toUpperCase()}
                           </span>
                         ))}
@@ -250,126 +323,111 @@ export default function CartPage() {
                 } catch (e) {}
                 return null;
               })()}
-              <div className="flex items-center gap-4 text-stone-200">
-                <div className="flex items-center gap-1 text-amber-400">
-                  <Star size={20} fill="currentColor" />
-                  <span className="font-bold text-lg">{cart.rating}</span>
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-2 pointer-events-auto">
-              <button 
-                onClick={() => {
-                  if (menuGallery.length > 0) {
-                    setFullscreenImageIndex(0);
-                  } else {
-                    alert('No menu photos provided for this cart.');
-                  }
-                }}
-                className={`bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors font-medium border border-white/20 shadow-sm ${menuGallery.length === 0 ? 'opacity-50' : ''}`}
-              >
-                <FileText size={18} />
-                Menu
-              </button>
-              {pod && (
-                <button 
-                  onClick={() => navigate(`/pod/${pod.id}/map?highlight=${cart.id}`)}
-                  className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors font-medium border border-white/20 shadow-sm"
-                >
-                  <MapIcon size={18} />
-                  Pod Map
-                </button>
-              )}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-2xl space-y-8 mb-8">
-        {cart.description && (
-          <section className="bg-white rounded-3xl p-8 shadow-sm border border-stone-100">
-            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-              <Info size={24} className="text-emerald-600" /> About
-            </h2>
-            <p className="text-stone-600 text-lg leading-relaxed">{cart.description}</p>
-          </section>
-        )}
+      <div className="max-w-4xl mx-auto p-4 md:p-8 mt-4">
+        <div className="max-w-2xl space-y-8 mb-8">
+          {cart.description && (
+            <section className="bg-white rounded-3xl p-8 shadow-sm border border-stone-100">
+              <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                <Info size={24} className="text-emerald-600" /> About
+              </h2>
+              <p className="text-stone-600 text-lg leading-relaxed">{cart.description}</p>
+            </section>
+          )}
 
-        {(cart.instagramUrl || cart.websiteUrl) && (
-          <section className="bg-white rounded-3xl p-6 shadow-sm border border-stone-100">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <Globe size={20} className="text-emerald-600" /> Connect
-            </h2>
-            <div className="space-y-3">
-              {cart.instagramUrl && (
-                <a 
-                  href={cart.instagramUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-stone-50 transition-colors text-stone-600 hover:text-pink-600"
-                >
-                  <Instagram size={20} />
-                  <span className="font-medium">Instagram</span>
-                </a>
-              )}
-              {cart.websiteUrl && (
-                <a 
-                  href={cart.websiteUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-stone-50 transition-colors text-stone-600 hover:text-emerald-600"
-                >
-                  <Globe size={20} />
-                  <span className="font-medium">Website</span>
-                </a>
-              )}
-            </div>
-          </section>
-        )}
+          {(cart.instagramUrl || cart.websiteUrl) && (
+            <section className="bg-white rounded-3xl p-6 shadow-sm border border-stone-100">
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <Globe size={20} className="text-emerald-600" /> Connect
+              </h2>
+              <div className="space-y-3">
+                {cart.instagramUrl && (
+                  <a 
+                    href={cart.instagramUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-stone-50 transition-colors text-stone-600 hover:text-pink-600"
+                  >
+                    <Instagram size={20} />
+                    <span className="font-medium">Instagram</span>
+                  </a>
+                )}
+                {cart.websiteUrl && (
+                  <a 
+                    href={cart.websiteUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-stone-50 transition-colors text-stone-600 hover:text-emerald-600"
+                  >
+                    <Globe size={20} />
+                    <span className="font-medium">Website</span>
+                  </a>
+                )}
+              </div>
+            </section>
+          )}
+        </div>
       </div>
 
       {fullscreenImageIndex !== null && (
         <div 
-          className="fixed inset-0 z-[4000] bg-black flex items-center justify-center p-4 cursor-pointer"
+          className="fixed inset-0 z-[4000] bg-black flex items-center justify-center cursor-pointer"
           onClick={() => setFullscreenImageIndex(null)}
         >
-          <button 
-            className="absolute top-[150px] right-4 bg-black text-white p-2 rounded-full shadow-lg transition-colors z-[5001]"
-            onClick={(e) => {
-              e.stopPropagation();
-              setFullscreenImageIndex(null);
-            }}
-          >
-            <X size={32} />
-          </button>
+          {/* Bottom Navigation Row */}
+          <div className="absolute bottom-0 left-0 right-0 z-[5001] flex items-center justify-between p-[6vmin] pointer-events-none">
+            {/* Left Slot */}
+            <div className="w-1/3 flex justify-start pointer-events-auto">
+              {menuGallery.length > 1 && (
+                <button 
+                  className="bg-black text-white p-[3vmin] rounded-full shadow-2xl border border-white/10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFullscreenImageIndex((prev) => (prev! - 1 + menuGallery.length) % menuGallery.length);
+                  }}
+                >
+                  <ChevronLeft className="w-[8vw] h-[8vw] md:w-[6vmin] md:h-[6vmin]" />
+                </button>
+              )}
+            </div>
+            
+            {/* Center Slot */}
+            <div className="w-1/3 flex justify-center pointer-events-auto">
+              <button 
+                className="bg-black text-white p-[3vmin] rounded-full shadow-2xl border border-white/10"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFullscreenImageIndex(null);
+                }}
+              >
+                <X className="w-[8vw] h-[8vw] md:w-[6vmin] md:h-[6vmin]" />
+              </button>
+            </div>
 
-          {menuGallery.length > 1 && (
-            <>
-              <button 
-                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black text-white p-4 rounded-full shadow-lg transition-colors z-[5001]"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setFullscreenImageIndex((prev) => (prev! - 1 + menuGallery.length) % menuGallery.length);
-                }}
-              >
-                <ChevronLeft size={48} />
-              </button>
-              <button 
-                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black text-white p-4 rounded-full shadow-lg transition-colors z-[5001]"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setFullscreenImageIndex((prev) => (prev! + 1) % menuGallery.length);
-                }}
-              >
-                <ChevronRight size={48} />
-              </button>
-            </>
-          )}
+            {/* Right Slot */}
+            <div className="w-1/3 flex justify-end pointer-events-auto">
+              {menuGallery.length > 1 && (
+                <button 
+                  className="bg-black text-white p-[3vmin] rounded-full shadow-2xl border border-white/10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFullscreenImageIndex((prev) => (prev! + 1) % menuGallery.length);
+                  }}
+                >
+                  <ChevronRight className="w-[8vw] h-[8vw] md:w-[6vmin] md:h-[6vmin]" />
+                </button>
+              )}
+            </div>
+          </div>
 
           <img 
             src={menuGallery[fullscreenImageIndex]} 
             alt="Fullscreen Menu" 
-            className="max-w-full max-h-full object-contain rounded-lg"
+            className="w-full h-full object-cover"
             referrerPolicy="no-referrer"
           />
         </div>

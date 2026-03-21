@@ -216,8 +216,8 @@ export function Header() {
             <div className="bg-emerald-600 p-2 rounded-xl group-hover:rotate-12 transition-transform shadow-lg">
               <Utensils className="text-white" size={20} />
             </div>
-            <span className="text-lg sm:text-xl font-black tracking-tighter text-stone-900 drop-shadow-md hidden sm:inline">FIND A FOODCART <span className="text-[10px] sm:text-xs text-emerald-600">v2</span></span>
-            <span className="text-lg font-black tracking-tighter text-stone-900 drop-shadow-md sm:hidden">FAF <span className="text-[10px] text-emerald-600">v2</span></span>
+            <span className="text-lg sm:text-xl font-black tracking-tighter text-stone-900 drop-shadow-md hidden sm:inline">GET FOODCART <span className="text-[10px] sm:text-xs text-emerald-600">v2</span></span>
+            <span className="text-lg font-black tracking-tighter text-stone-900 drop-shadow-md sm:hidden">GFC <span className="text-[10px] text-emerald-600">v2</span></span>
           </Link>
         </div>
 

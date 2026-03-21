@@ -1,6 +1,8 @@
 import React, { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, Camera, File, X, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, Camera, File, X, Plus, Trash2, Layers } from 'lucide-react';
+import { AnimatePresence } from 'motion/react';
+import { MenuStitcher } from '../components/MenuStitcher';
 import { Cart, Pod } from '../types';
 import { useAuth } from '../AuthContext';
 import { VoiceInput } from '../components/VoiceInput';
@@ -36,6 +38,7 @@ export default function CartForm() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availableTags, setAvailableTags] = useState<{name: string, tag: string}[]>([]);
+  const [showStitcher, setShowStitcher] = useState(false);
 
   useEffect(() => {
     fetch('/api/tags')
@@ -146,6 +149,20 @@ export default function CartForm() {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
+      <AnimatePresence>
+        {showStitcher && (
+          <MenuStitcher 
+            images={formData.menuGallery || []} 
+            onStitch={(stitchedUrl) => {
+              setFormData(prev => ({
+                ...prev,
+                menuGallery: [...(prev.menuGallery || []), stitchedUrl]
+              }));
+            }}
+            onClose={() => setShowStitcher(false)}
+          />
+        )}
+      </AnimatePresence>
       <div className="flex items-center gap-4 mb-8">
         <button onClick={() => navigate(-1)} className="p-2 hover:bg-stone-200 rounded-full">
           <ChevronLeft size={24} />
@@ -200,7 +217,19 @@ export default function CartForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-stone-700 mb-4">Menu Images</label>
+            <div className="flex items-center justify-between mb-4">
+              <label className="block text-sm font-semibold text-stone-700">Menu Images</label>
+              {formData.menuGallery?.length >= 2 && (
+                <button 
+                  type="button" 
+                  onClick={() => setShowStitcher(true)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold hover:bg-emerald-100 transition-colors border border-emerald-100"
+                >
+                  <Layers size={14} />
+                  Stitch Images
+                </button>
+              )}
+            </div>
             {formData.menuGallery?.length > 0 && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                 {formData.menuGallery.map((url: string, i: number) => (
