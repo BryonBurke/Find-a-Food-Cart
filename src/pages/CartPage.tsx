@@ -231,67 +231,69 @@ export default function CartPage() {
           referrerPolicy="no-referrer"
         />
         
-        {podCarts.length > 1 && prevCart && nextCart && (
-          <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-between p-[4vmin] md:p-[6vmin] pointer-events-none">
-            {/* Left Slot: Previous Cart */}
-            <div className="w-[15%] flex justify-start pointer-events-auto">
+        <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-between p-[4vmin] md:p-[6vmin] pointer-events-none">
+          {/* Left Slot: Previous Cart */}
+          <div className="w-[15%] flex justify-start pointer-events-auto">
+            {podCarts.length > 1 && prevCart && (
               <button
                 onClick={(e) => { e.stopPropagation(); navigate(`/cart/${prevCart.id}`); }}
                 className="bg-black text-white p-[2.5vmin] rounded-full shadow-2xl border border-white/10"
               >
                 <ChevronLeft className="w-[6vw] h-[6vw] md:w-[4vmin] md:h-[4vmin]" />
               </button>
-            </div>
+            )}
+          </div>
 
-            {/* Center Slot: Action Buttons */}
-            <div className="w-[70%] flex items-center justify-center gap-[2vmin] pointer-events-auto">
+          {/* Center Slot: Action Buttons */}
+          <div className="w-[70%] flex items-center justify-center gap-[2vmin] pointer-events-auto">
+            <button 
+              onClick={() => {
+                if (menuGallery.length > 0) {
+                  setFullscreenImageIndex(0);
+                } else {
+                  alert('No menu photos provided for this cart.');
+                }
+              }}
+              className={`bg-black text-white px-[4vmin] py-[2.5vmin] rounded-full shadow-2xl border border-white/10 font-black text-[3vmin] md:text-[2vmin] uppercase tracking-widest transition-colors hover:bg-stone-900 ${menuGallery.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              Menu
+            </button>
+
+            <button 
+              onClick={() => {
+                if (cart?.podId) {
+                  navigate(`/pod/${cart.podId}`);
+                } else {
+                  navigate(-1);
+                }
+              }} 
+              className="bg-black text-white px-[5vmin] py-[3vmin] rounded-full shadow-2xl border border-white/10 font-black text-[4vmin] md:text-[2.5vmin] uppercase tracking-widest transition-colors hover:bg-stone-900"
+            >
+              POD
+            </button>
+
+            {pod && (
               <button 
-                onClick={() => {
-                  if (menuGallery.length > 0) {
-                    setFullscreenImageIndex(0);
-                  } else {
-                    alert('No menu photos provided for this cart.');
-                  }
-                }}
-                className={`bg-black text-white px-[4vmin] py-[2.5vmin] rounded-full shadow-2xl border border-white/10 font-black text-[3vmin] md:text-[2vmin] uppercase tracking-widest transition-colors hover:bg-stone-900 ${menuGallery.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={() => navigate(`/pod/${pod.id}/map?highlight=${cart.id}`)}
+                className="bg-black text-white px-[4vmin] py-[2.5vmin] rounded-full shadow-2xl border border-white/10 font-black text-[3vmin] md:text-[2vmin] uppercase tracking-widest transition-colors hover:bg-stone-900"
               >
-                Menu
+                Map
               </button>
+            )}
+          </div>
 
-              <button 
-                onClick={() => {
-                  if (cart?.podId) {
-                    navigate(`/pod/${cart.podId}`);
-                  } else {
-                    navigate(-1);
-                  }
-                }} 
-                className="bg-black text-white px-[5vmin] py-[3vmin] rounded-full shadow-2xl border border-white/10 font-black text-[4vmin] md:text-[2.5vmin] uppercase tracking-widest transition-colors hover:bg-stone-900"
-              >
-                POD
-              </button>
-
-              {pod && (
-                <button 
-                  onClick={() => navigate(`/pod/${pod.id}/map?highlight=${cart.id}`)}
-                  className="bg-black text-white px-[4vmin] py-[2.5vmin] rounded-full shadow-2xl border border-white/10 font-black text-[3vmin] md:text-[2vmin] uppercase tracking-widest transition-colors hover:bg-stone-900"
-                >
-                  Map
-                </button>
-              )}
-            </div>
-
-            {/* Right Slot: Next Cart */}
-            <div className="w-[15%] flex justify-end pointer-events-auto">
+          {/* Right Slot: Next Cart */}
+          <div className="w-[15%] flex justify-end pointer-events-auto">
+            {podCarts.length > 1 && nextCart && (
               <button
                 onClick={(e) => { e.stopPropagation(); navigate(`/cart/${nextCart.id}`); }}
                 className="bg-black text-white p-[2.5vmin] rounded-full shadow-2xl border border-white/10"
               >
                 <ChevronRight className="w-[6vw] h-[6vw] md:w-[4vmin] md:h-[4vmin]" />
               </button>
-            </div>
+            )}
           </div>
-        )}
+        </div>
 
         <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
         
