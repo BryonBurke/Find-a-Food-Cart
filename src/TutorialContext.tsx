@@ -1,8 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useEditMode } from './EditModeContext';
 
 export type TutorialStep = 
   | 'IDLE'
+  | 'CHOOSE_PATH'
+  | 'GO_TO_POD'
   | 'OPEN_MENU'
   | 'CLICK_ADD_POD'
   | 'CLICK_MAP'
@@ -10,12 +13,17 @@ export type TutorialStep =
   | 'FILL_POD_FORM'
   | 'CLICK_ADD_CART'
   | 'FILL_CART_FORM'
+  | 'CLICK_POD_MAP'
+  | 'USE_PLACE_ON_MAP'
+  | 'POSITION_CARTS'
+  | 'CONGRATS'
   | 'DONE';
 
 interface TutorialContextType {
   step: TutorialStep;
   startTutorial: () => void;
   nextStep: (expectedCurrentStep: TutorialStep, next: TutorialStep) => void;
+  goToStep: (next: TutorialStep) => void;
   endTutorial: () => void;
 }
 
@@ -24,9 +32,14 @@ const TutorialContext = createContext<TutorialContextType | null>(null);
 export function TutorialProvider({ children }: { children: React.ReactNode }) {
   const [step, setStep] = useState<TutorialStep>('IDLE');
   const location = useLocation();
+  const { editMode } = useEditMode();
 
   const startTutorial = () => {
-    setStep('OPEN_MENU');
+    setStep('CHOOSE_PATH');
+  };
+
+  const goToStep = (next: TutorialStep) => {
+    setStep(next);
   };
 
   const nextStep = (expectedCurrentStep: TutorialStep, next: TutorialStep) => {
@@ -67,12 +80,16 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     } else if (step === 'FILL_CART_FORM' && path.match(/^\/pod\/[^/]+$/) && !path.includes('new')) {
       setStep('CLICK_ADD_CART');
     } else if (step === 'FILL_CART_FORM' && path.match(/^\/cart\/[^/]+$/)) {
-      setStep('DONE');
+      setStep('CLICK_POD_MAP');
+    } else if (step === 'CLICK_POD_MAP' && path.match(/^\/pod\/[^/]+\/map$/)) {
+      setStep('USE_PLACE_ON_MAP');
+    } else if (step === 'POSITION_CARTS' && !editMode) {
+      setStep('CONGRATS');
     }
-  }, [location.pathname, location.search, step]);
+  }, [location.pathname, location.search, step, editMode]);
 
   return (
-    <TutorialContext.Provider value={{ step, startTutorial, nextStep, endTutorial }}>
+    <TutorialContext.Provider value={{ step, startTutorial, nextStep, goToStep, endTutorial }}>
       {children}
     </TutorialContext.Provider>
   );

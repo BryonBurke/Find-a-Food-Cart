@@ -7,9 +7,12 @@ import { useAuth } from '../AuthContext';
 import { useEditMode } from '../EditModeContext';
 import { isCartOpen } from '../utils';
 
+import { useTutorial } from '../TutorialContext';
+
 export default function CartPage() {
   const { user } = useAuth();
   const { editMode } = useEditMode();
+  const { nextStep } = useTutorial();
   const { id } = useParams();
   const navigate = useNavigate();
   const [cart, setCart] = useState<Cart | null>(null);
@@ -328,7 +331,10 @@ export default function CartPage() {
 
             {pod && (
               <button 
-                onClick={() => navigate(`/pod/${pod.id}/map?highlight=${cart.id}`)}
+                onClick={() => {
+                  nextStep('CLICK_POD_MAP', 'USE_PLACE_ON_MAP');
+                  navigate(`/pod/${pod.id}/map?highlight=${cart.id}`);
+                }}
                 className="bg-black text-white px-[4vmin] py-[2.5vmin] rounded-full shadow-2xl border border-white/10 font-black text-[3vmin] md:text-[2vmin] uppercase tracking-widest transition-colors hover:bg-stone-900"
               >
                 Map

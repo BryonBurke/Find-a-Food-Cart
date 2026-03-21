@@ -5,13 +5,32 @@ import { X } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
 export function TutorialOverlay() {
-  const { step, endTutorial } = useTutorial();
+  const { step, endTutorial, goToStep } = useTutorial();
   const location = useLocation();
 
   if (step === 'IDLE' || step === 'DONE') return null;
 
   const getStepContent = () => {
     switch (step) {
+      case 'CHOOSE_PATH':
+        return {
+          text: "How would you like to start?",
+          position: "top-24 left-1/2 -translate-x-1/2",
+          arrow: "hidden",
+          options: [
+            { label: "Start from scratch with new pod", action: () => goToStep('OPEN_MENU') },
+            { label: "Add a cart in an existing pod", action: () => goToStep('GO_TO_POD') }
+          ]
+        };
+      case 'GO_TO_POD':
+        return {
+          text: "Go to the Pod where you want to add a cart",
+          position: "top-24 left-1/2 -translate-x-1/2",
+          arrow: "hidden",
+          buttons: [
+            { label: "I'm here", action: () => goToStep('CLICK_ADD_CART') }
+          ]
+        };
       case 'OPEN_MENU':
         if (location.pathname !== '/') return null;
         return {
@@ -50,7 +69,7 @@ export function TutorialOverlay() {
       case 'CLICK_ADD_CART':
         if (!location.pathname.match(/^\/pod\/[^/]+$/)) return null;
         return {
-          text: "Now let's add a cart to your new pod! Click the 'Add Cart' button.",
+          text: "Now let's add a cart to this pod! Click the 'Add Cart' button.",
           position: "top-32 right-4",
           arrow: "hidden",
         };
@@ -59,6 +78,33 @@ export function TutorialOverlay() {
         return {
           text: "Fill out the cart details and save it.",
           position: "top-8 left-1/2 -translate-x-1/2",
+          arrow: "hidden",
+        };
+      case 'CLICK_POD_MAP':
+        if (!location.pathname.match(/^\/cart\/[^/]+$/)) return null;
+        return {
+          text: "Now click the map button below to put the cart in the right place on the map.",
+          position: "top-24 left-1/2 -translate-x-1/2",
+          arrow: "hidden",
+        };
+      case 'USE_PLACE_ON_MAP':
+        if (!location.pathname.match(/^\/pod\/[^/]+\/map$/)) return null;
+        return {
+          text: "Go to the cart rack at the bottom and use the Place on Map to put the cart where it should be.",
+          position: "bottom-64 left-1/2 -translate-x-1/2",
+          arrow: "hidden",
+        };
+      case 'POSITION_CARTS':
+        if (!location.pathname.match(/^\/pod\/[^/]+\/map$/)) return null;
+        return {
+          text: "Position the carts by dragging them to the right place. Clicking on a cart will open arrow keys for precise placement. When done, disable editing.",
+          position: "top-24 left-1/2 -translate-x-1/2",
+          arrow: "hidden",
+        };
+      case 'CONGRATS':
+        return {
+          text: "Good Job! You added a cart!",
+          position: "top-24 left-1/2 -translate-x-1/2",
           arrow: "hidden",
         };
       default:
@@ -85,6 +131,34 @@ export function TutorialOverlay() {
           <X size={16} />
         </button>
         <p className="text-sm font-medium pr-6">{content.text}</p>
+        
+        {content.options && (
+          <div className="mt-4 flex flex-col gap-2">
+            {content.options.map((opt, i) => (
+              <button
+                key={i}
+                onClick={opt.action}
+                className="w-full bg-stone-900 text-white py-2 px-4 rounded-lg font-bold text-xs hover:bg-stone-800 transition-colors text-left"
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {content.buttons && (
+          <div className="mt-4 flex flex-col gap-2">
+            {content.buttons.map((btn, i) => (
+              <button
+                key={i}
+                onClick={btn.action}
+                className="w-full bg-emerald-600 text-white py-2 px-4 rounded-lg font-bold text-xs hover:bg-emerald-700 transition-colors"
+              >
+                {btn.label}
+              </button>
+            ))}
+          </div>
+        )}
       </motion.div>
     </AnimatePresence>
   );

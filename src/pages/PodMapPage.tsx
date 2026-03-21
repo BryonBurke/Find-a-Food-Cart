@@ -9,9 +9,12 @@ import { getEnv } from '../env';
 import { isCartOpen, getShortName } from '../utils';
 import { CenterPodButton, MapBoundsHandler } from '../components/MapComponents';
 
+import { useTutorial } from '../TutorialContext';
+
 export default function PodMapPage() {
   const { user } = useAuth();
   const { editMode } = useEditMode();
+  const { step, nextStep } = useTutorial();
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -140,6 +143,7 @@ export default function PodMapPage() {
     const offsetLat = pod.latitude + (Math.random() - 0.5) * 0.0002;
     const offsetLng = pod.longitude + (Math.random() - 0.5) * 0.0002;
     handleDragEnd(cartId, offsetLat, offsetLng);
+    nextStep('USE_PLACE_ON_MAP', 'POSITION_CARTS');
   };
 
   const handleDeletePod = async () => {
@@ -305,6 +309,7 @@ export default function PodMapPage() {
                       const canEdit = editMode && !!user && (!cart.ownerEmail || user.email?.toLowerCase() === cart.ownerEmail || user.email?.toLowerCase() === 'bryonparis@gmail.com');
                       if (canEdit) {
                         setSelectedCartId(cart.id);
+                        nextStep('USE_PLACE_ON_MAP', 'POSITION_CARTS');
                       } else {
                         navigate(`/cart/${cart.id}`);
                       }
