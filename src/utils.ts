@@ -60,7 +60,23 @@ export const uploadFileToStorage = async (file: File): Promise<string> => {
   return Promise.race([uploadPromise, timeoutPromise]);
 };
 
-export function isCartOpen(openTime?: string, closeTime?: string): boolean {
+export function isCartOpen(openTime?: string, closeTime?: string, weeklyHours?: any): boolean {
+  const now = new Date();
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const currentDay = days[now.getDay()];
+
+  if (weeklyHours && weeklyHours[currentDay]) {
+    const dayData = weeklyHours[currentDay];
+    if (dayData.closed) return false;
+    if (dayData.open && dayData.close) {
+      return checkTime(dayData.open, dayData.close);
+    }
+  }
+
+  return checkTime(openTime, closeTime);
+}
+
+function checkTime(openTime?: string, closeTime?: string): boolean {
   if (!openTime || !closeTime || typeof openTime !== 'string' || typeof closeTime !== 'string') return false;
   const now = new Date();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();

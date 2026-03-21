@@ -449,7 +449,7 @@ export default function MapView() {
           
           {filteredPods.map((pod) => {
             const podCarts = carts.filter(c => c.podId === pod.id);
-            const hasOpenCart = podCarts.some(c => isCartOpen(c.openTime, c.closeTime));
+            const hasOpenCart = podCarts.some(c => isCartOpen(c.openTime, c.closeTime, c.weeklyHours));
             const isLevel1 = zoomLevel <= 14;
             return (
               <AdvancedMarker 

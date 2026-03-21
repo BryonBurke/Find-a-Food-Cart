@@ -431,13 +431,14 @@ async function startServer() {
 
   app.post("/api/carts", authMiddleware, async (req, res) => {
     try {
-      const { podId, name, description, imageUrl, menuGallery, tags, instagramUrl, websiteUrl, rating, latitude, longitude, openTime, closeTime } = req.body;
+      const { podId, name, description, imageUrl, menuGallery, tags, instagramUrl, websiteUrl, rating, latitude, longitude, openTime, closeTime, weeklyHours } = req.body;
       const data: any = { podId, name, description, imageUrl, menuGallery, instagramUrl, websiteUrl, rating };
       if (tags !== undefined) data.tags = tags;
       if (latitude !== undefined) data.latitude = latitude;
       if (longitude !== undefined) data.longitude = longitude;
       if (openTime !== undefined) data.openTime = openTime;
       if (closeTime !== undefined) data.closeTime = closeTime;
+      if (weeklyHours !== undefined) data.weeklyHours = weeklyHours;
       
       // Remove undefined values
       Object.keys(data).forEach(key => data[key] === undefined && delete data[key]);
@@ -454,13 +455,14 @@ async function startServer() {
   app.put("/api/carts/:id", authMiddleware, async (req, res) => {
     console.log(`Server: Received request to update cart ${req.params.id}`);
     try {
-      const { name, description, imageUrl, menuGallery, tags, instagramUrl, websiteUrl, rating, latitude, longitude, openTime, closeTime } = req.body;
+      const { name, description, imageUrl, menuGallery, tags, instagramUrl, websiteUrl, rating, latitude, longitude, openTime, closeTime, weeklyHours } = req.body;
       const data: any = { name, description, imageUrl, menuGallery, instagramUrl, websiteUrl, rating };
       if (tags !== undefined) data.tags = tags;
       if (latitude !== undefined) data.latitude = latitude;
       if (longitude !== undefined) data.longitude = longitude;
       if (openTime !== undefined) data.openTime = openTime;
       if (closeTime !== undefined) data.closeTime = closeTime;
+      if (weeklyHours !== undefined) data.weeklyHours = weeklyHours;
       
       // Remove undefined values
       Object.keys(data).forEach(key => data[key] === undefined && delete data[key]);

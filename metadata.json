@@ -1,6 +1,6 @@
 {
-  "name": "cart9",
-  "description": "Food cart pod explorer",
+  "name": "Cart Hours Manager",
+  "description": "Manage and view food cart operating hours with a weekly schedule.",
   "requestFramePermissions": [
     "geolocation",
     "camera",

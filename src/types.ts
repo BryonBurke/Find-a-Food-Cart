@@ -24,5 +24,8 @@ export interface Cart {
   ownerEmail?: string;
   openTime?: string;
   closeTime?: string;
+  weeklyHours?: {
+    [key: string]: { open: string; close: string; closed?: boolean };
+  };
   favorites?: string[];
 }

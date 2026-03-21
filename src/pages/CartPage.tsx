@@ -120,6 +120,13 @@ export default function CartPage() {
     return `${h}:${m} ${ampm}`;
   };
 
+  const getStatus = () => {
+    if (!cart.openTime && !cart.closeTime && (!cart.weeklyHours || Object.keys(cart.weeklyHours).length === 0)) return 'unknown';
+    return isCartOpen(cart.openTime, cart.closeTime, cart.weeklyHours) ? 'open' : 'closed';
+  };
+
+  const status = getStatus();
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -175,42 +182,67 @@ export default function CartPage() {
               <h1 className="bg-black text-white px-[4vmin] py-[1.5vmin] rounded-full shadow-2xl border border-white/10 font-black text-[3.5vmin] md:text-[2.5vmin] uppercase tracking-widest text-center leading-tight">
                 {cart.name}
               </h1>
-              {isCartOpen(cart.openTime, cart.closeTime) && (
-                <div className="relative">
-                  <button 
-                    onClick={() => setShowHours(!showHours)}
-                    className="inline-flex items-center gap-[1vmin] px-[2.5vmin] py-[1vmin] bg-green-500 text-white text-[2.5vmin] md:text-[1.5vmin] font-bold rounded-full uppercase tracking-widest shadow-lg hover:bg-green-600 transition-colors active:scale-95"
-                  >
-                    <span className="w-[1.5vmin] h-[1.5vmin] bg-white rounded-full animate-pulse"></span> Open
-                  </button>
-                  
-                  <AnimatePresence>
-                    {showHours && (
-                      <>
-                        <div 
-                          className="fixed inset-0 z-[40]" 
-                          onClick={() => setShowHours(false)}
-                        />
-                        <motion.div
-                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          className="absolute top-full mt-[2vmin] left-1/2 -translate-x-1/2 bg-white text-stone-900 p-[3vmin] rounded-[2vmin] shadow-2xl border border-stone-100 min-w-[200px] z-[50]"
-                        >
-                          <div className="text-center">
-                            <p className="text-[2vmin] md:text-[1.2vmin] font-black uppercase tracking-widest text-stone-400 mb-[1vmin]">Hours Today</p>
-                            <p className="text-[3vmin] md:text-[1.8vmin] font-bold text-stone-900 whitespace-nowrap">
-                              {formatTime(cart.openTime)} - {formatTime(cart.closeTime)}
-                            </p>
-                          </div>
-                          {/* Arrow */}
-                          <div className="absolute -top-[1vmin] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[1vmin] border-l-transparent border-r-[1vmin] border-r-transparent border-b-[1vmin] border-b-white"></div>
-                        </motion.div>
-                      </>
-                    )}
-                  </AnimatePresence>
-                </div>
-              )}
+              <div className="relative">
+                <button 
+                  onClick={() => setShowHours(!showHours)}
+                  className={`inline-flex items-center gap-[1vmin] px-[2.5vmin] py-[1vmin] text-white text-[2.5vmin] md:text-[1.5vmin] font-bold rounded-full uppercase tracking-widest shadow-lg transition-colors active:scale-95 ${
+                    status === 'open' ? 'bg-green-500 hover:bg-green-600' : 
+                    status === 'closed' ? 'bg-red-500 hover:bg-red-600' : 
+                    'bg-yellow-500 hover:bg-yellow-600'
+                  }`}
+                >
+                  {status === 'open' ? 'Open' : status === 'closed' ? 'Closed' : 'Unknown'}
+                </button>
+                
+                <AnimatePresence>
+                  {showHours && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-[40]" 
+                        onClick={() => setShowHours(false)}
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute top-full mt-[2vmin] left-1/2 -translate-x-1/2 bg-white text-stone-900 p-[3vmin] rounded-[2vmin] shadow-2xl border border-stone-100 min-w-[280px] z-[50]"
+                      >
+                        <div className="space-y-3">
+                          <p className="text-[2vmin] md:text-[1.2vmin] font-black uppercase tracking-widest text-stone-400 text-center border-b border-stone-100 pb-2">Weekly Hours</p>
+                          {cart.weeklyHours && Object.keys(cart.weeklyHours).length > 0 ? (
+                            <div className="space-y-1.5">
+                              {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                                const dayHours = (cart.weeklyHours as any)?.[day];
+                                return (
+                                  <div key={day} className="flex justify-between items-center gap-4 text-[2.5vmin] md:text-[1.4vmin]">
+                                    <span className="font-bold text-stone-500">{day.slice(0, 3)}</span>
+                                    <span className="font-medium text-stone-900">
+                                      {dayHours?.closed ? (
+                                        <span className="text-red-500 uppercase text-[0.8em] font-black">Closed</span>
+                                      ) : (
+                                        dayHours?.open ? `${formatTime(dayHours.open)} - ${formatTime(dayHours.close)}` : 'Not set'
+                                      )}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="text-center">
+                              <p className="text-[2vmin] md:text-[1.2vmin] font-black uppercase tracking-widest text-stone-400 mb-[1vmin]">Hours Today</p>
+                              <p className="text-[3vmin] md:text-[1.8vmin] font-bold text-stone-900 whitespace-nowrap">
+                                {status === 'unknown' ? 'Hours not set' : `${formatTime(cart.openTime)} - ${formatTime(cart.closeTime)}`}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        {/* Arrow */}
+                        <div className="absolute -top-[1vmin] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[1vmin] border-l-transparent border-r-[1vmin] border-r-transparent border-b-[1vmin] border-b-white"></div>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
 
             {/* Top Right: Edit/Delete (Absolutely positioned to not affect centering) */}

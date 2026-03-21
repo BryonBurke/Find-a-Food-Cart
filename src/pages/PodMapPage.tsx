@@ -281,7 +281,7 @@ export default function PodMapPage() {
                   } catch(e) {}
                 }
                 const isHighlighted = cart.id === highlightId || hasHighlightTag || cart.id === selectedCartId;
-              const isOpen = isCartOpen(cart.openTime, cart.closeTime);
+              const isOpen = isCartOpen(cart.openTime, cart.closeTime, cart.weeklyHours);
               const pinColor = isHighlighted ? 'bg-red-600' : 'bg-violet-600';
               let ringClass = isHighlighted ? 'ring-4 ring-red-600/50 scale-110' : '';
               if (isOpen && !isHighlighted) {

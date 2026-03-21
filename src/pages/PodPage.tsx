@@ -270,12 +270,20 @@ export default function PodPage() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                       referrerPolicy="no-referrer"
                     />
-                    {isCartOpen(cart.openTime, cart.closeTime) && (
-                      <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
-                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                        <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Open</span>
-                      </div>
-                    )}
+                    {(() => {
+                      const status = isCartOpen(cart.openTime, cart.closeTime, cart.weeklyHours) ? 'open' : 'closed';
+                      return (
+                        <div className={`absolute top-4 right-4 px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 transition-colors ${
+                          status === 'open' ? 'bg-green-500' : 
+                          status === 'closed' ? 'bg-red-500' : 
+                          'bg-yellow-500'
+                        }`}>
+                          <span className="text-[10px] font-black text-white uppercase tracking-wider">
+                            {status === 'open' ? 'Open' : status === 'closed' ? 'Closed' : 'Unknown'}
+                          </span>
+                        </div>
+                      );
+                    })()}
                     {canEdit && editMode && (
                       <button 
                         onClick={(e) => {

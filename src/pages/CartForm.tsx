@@ -1,14 +1,15 @@
 import React, { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, Camera, File, X, Plus, Trash2, Layers } from 'lucide-react';
-import { AnimatePresence } from 'motion/react';
-import { MenuStitcher } from '../components/MenuStitcher';
+import { ChevronLeft, Camera, File, X, Plus, Trash2 } from 'lucide-react';
 import { Cart, Pod } from '../types';
 import { useAuth } from '../AuthContext';
 import { VoiceInput } from '../components/VoiceInput';
 import { CameraInput } from '../components/CameraInput';
 import { FileInput } from '../components/FileInput';
+import { ClockPicker } from '../components/ClockPicker';
+import { CartHoursTable } from '../components/CartHoursTable';
 import { checkContentSafety, getRandomFoodImage } from '../utils';
+import { AnimatePresence, motion } from 'motion/react';
 
 export default function CartForm() {
   const { user } = useAuth();
@@ -29,8 +30,9 @@ export default function CartForm() {
     imageUrl: '',
     menuGallery: [],
     tags: [],
-    openTime: '11:00',
-    closeTime: '20:00',
+    openTime: '',
+    closeTime: '',
+    weeklyHours: {},
     podId: podId || '',
     socialLinks: { instagram: '', website: '' }
   });
@@ -38,7 +40,7 @@ export default function CartForm() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availableTags, setAvailableTags] = useState<{name: string, tag: string}[]>([]);
-  const [showStitcher, setShowStitcher] = useState(false);
+  const [showHoursModal, setShowHoursModal] = useState(false);
 
   useEffect(() => {
     fetch('/api/tags')
@@ -63,7 +65,11 @@ export default function CartForm() {
         if (data.tags) {
           try { parsedTags = typeof data.tags === 'string' ? JSON.parse(data.tags) : data.tags; } catch(e) {}
         }
-        setFormData({ ...data, menuGallery: parsedMenuGallery, tags: parsedTags });
+        let parsedWeeklyHours = {};
+        if (data.weeklyHours) {
+          try { parsedWeeklyHours = typeof data.weeklyHours === 'string' ? JSON.parse(data.weeklyHours) : data.weeklyHours; } catch(e) {}
+        }
+        setFormData({ ...data, menuGallery: parsedMenuGallery, tags: parsedTags, weeklyHours: parsedWeeklyHours });
       });
     }
   }, [cartId, isEdit]);
@@ -147,20 +153,59 @@ export default function CartForm() {
     setNewTagCode('');
   };
 
+  const formatTime = (time?: string) => {
+    if (!time) return 'Set Time';
+    const [hours, minutes] = time.split(':').map(Number);
+    if (isNaN(hours) || isNaN(minutes)) return time;
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const h = hours % 12 || 12;
+    const m = minutes.toString().padStart(2, '0');
+    return `${h}:${m} ${ampm}`;
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-6">
       <AnimatePresence>
-        {showStitcher && (
-          <MenuStitcher 
-            images={formData.menuGallery || []} 
-            onStitch={(stitchedUrl) => {
-              setFormData(prev => ({
-                ...prev,
-                menuGallery: [...(prev.menuGallery || []), stitchedUrl]
-              }));
-            }}
-            onClose={() => setShowStitcher(false)}
-          />
+        {showHoursModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[2000] flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white rounded-[2.5rem] p-8 max-w-2xl w-full shadow-2xl relative max-h-[90vh] overflow-y-auto"
+            >
+              <button 
+                onClick={() => setShowHoursModal(false)}
+                className="absolute top-6 right-6 p-2 hover:bg-stone-100 rounded-full text-stone-400 transition-colors"
+              >
+                <X size={24} />
+              </button>
+              
+              <div className="flex items-center gap-3 mb-8">
+                <div className="p-3 bg-emerald-100 text-emerald-600 rounded-2xl">
+                  <Plus size={24} />
+                </div>
+                <h2 className="text-2xl font-black text-stone-900 uppercase tracking-tight">Weekly Hours</h2>
+              </div>
+
+              <CartHoursTable 
+                hours={formData.weeklyHours || {}} 
+                onChange={(newHours) => setFormData((prev: any) => ({ ...prev, weeklyHours: newHours }))} 
+              />
+
+              <button
+                onClick={() => setShowHoursModal(false)}
+                className="w-full mt-8 bg-stone-900 text-white py-4 rounded-2xl font-bold text-lg hover:bg-black transition-all shadow-lg"
+              >
+                Done
+              </button>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
       <div className="flex items-center gap-4 mb-8">
@@ -217,19 +262,7 @@ export default function CartForm() {
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <label className="block text-sm font-semibold text-stone-700">Menu Images</label>
-              {formData.menuGallery?.length >= 2 && (
-                <button 
-                  type="button" 
-                  onClick={() => setShowStitcher(true)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold hover:bg-emerald-100 transition-colors border border-emerald-100"
-                >
-                  <Layers size={14} />
-                  Stitch Images
-                </button>
-              )}
-            </div>
+            <label className="block text-sm font-semibold text-stone-700 mb-4">Menu Images</label>
             {formData.menuGallery?.length > 0 && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                 {formData.menuGallery.map((url: string, i: number) => (
@@ -344,27 +377,19 @@ export default function CartForm() {
         </div>
 
         <div className="bg-white p-8 rounded-3xl shadow-sm border border-stone-100 space-y-6">
-          <h2 className="text-xl font-bold text-stone-800">Hours</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-semibold text-stone-700 mb-2">Opening Time</label>
-              <input
-                type="time"
-                value={formData.openTime || ''}
-                onChange={e => setFormData(prev => ({ ...prev, openTime: e.target.value }))}
-                className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-emerald-50 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-stone-700 mb-2">Closing Time</label>
-              <input
-                type="time"
-                value={formData.closeTime || ''}
-                onChange={e => setFormData(prev => ({ ...prev, closeTime: e.target.value }))}
-                className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-emerald-50 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
-              />
-            </div>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-stone-800">Operating Hours</h2>
+            <button
+              type="button"
+              onClick={() => setShowHoursModal(true)}
+              className="bg-emerald-100 text-emerald-700 px-6 py-2 rounded-full font-bold text-sm hover:bg-emerald-200 transition-all flex items-center gap-2"
+            >
+              <Plus size={18} /> Edit Schedule
+            </button>
           </div>
+          <p className="text-stone-500 text-sm">
+            Set custom hours for each day of the week. This helps customers know when you're open.
+          </p>
         </div>
 
         <div className="bg-white p-8 rounded-3xl shadow-sm border border-stone-100 space-y-6">
