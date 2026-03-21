@@ -100,7 +100,7 @@ export default function CartForm() {
         const data = await res.json();
         const cartId = isEdit ? id : data.id;
         window.dispatchEvent(new Event('carts-updated'));
-        navigate(`/pod/${formData.podId}?slideshow=${cartId}`);
+        navigate(`/cart/${cartId}`);
       } else {
         const data = await res.json();
         setErrorMsg(data.error || 'Failed to save cart');

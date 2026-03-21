@@ -264,9 +264,16 @@ export function Header() {
 }
 
 export function PermissionsGate({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [status, setStatus] = useState<'pending' | 'done'>('pending');
 
   useEffect(() => {
+    if (!user) {
+      setStatus('done');
+      return;
+    }
+
+    setStatus('pending');
     let isMounted = true;
     const timeoutId = setTimeout(() => {
       if (isMounted) setStatus('done');
@@ -315,7 +322,7 @@ export function PermissionsGate({ children }: { children: React.ReactNode }) {
 
     requestPermissions();
     return () => { isMounted = false; clearTimeout(timeoutId); };
-  }, []);
+  }, [user]);
 
   if (status === 'pending') {
     return (

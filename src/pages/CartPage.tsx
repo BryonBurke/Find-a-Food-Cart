@@ -44,7 +44,7 @@ export default function CartPage() {
   useEffect(() => {
     const handleGoToPodMap = () => {
       if (cart?.podId) {
-        navigate(`/pod/${cart.podId}/map`);
+        navigate(`/pod/${cart.podId}`);
       }
     };
     window.addEventListener('go-to-pod-map', handleGoToPodMap);
@@ -105,6 +105,10 @@ export default function CartPage() {
     user.email?.toLowerCase() === 'bryonparis@gmail.com'
   );
 
+  const currentIndex = podCarts.findIndex(c => c.id === cart.id);
+  const prevCart = currentIndex > 0 ? podCarts[currentIndex - 1] : podCarts[podCarts.length - 1];
+  const nextCart = currentIndex < podCarts.length - 1 ? podCarts[currentIndex + 1] : podCarts[0];
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -155,11 +159,7 @@ export default function CartPage() {
       <div className="flex items-center justify-between mb-6">
         <button onClick={() => {
           if (cart?.podId) {
-            if (podCarts.length <= 1) {
-              navigate('/');
-            } else {
-              navigate(-1);
-            }
+            navigate(`/pod/${cart.podId}`);
           } else {
             navigate(-1);
           }
@@ -167,22 +167,20 @@ export default function CartPage() {
           POD
         </button>
         <div className="flex gap-2">
-          {!!user && !!user.uid && !user.isAnonymous && canEdit && (
+          {!!user && !!user.uid && !user.isAnonymous && canEdit && editMode && (
             <>
-              {editMode && (
-                <button 
-                  onClick={() => {
-                    if (user) {
-                      navigate(`/cart/${id}/edit`);
-                    } else {
-                      navigate('/login');
-                    }
-                  }} 
-                  className="p-2 hover:bg-stone-200 rounded-full transition-colors text-stone-600"
-                >
-                  <Edit2 size={20} />
-                </button>
-              )}
+              <button 
+                onClick={() => {
+                  if (user) {
+                    navigate(`/cart/${id}/edit`);
+                  } else {
+                    navigate('/login');
+                  }
+                }} 
+                className="p-2 hover:bg-stone-200 rounded-full transition-colors text-stone-600"
+              >
+                <Edit2 size={20} />
+              </button>
               <button 
                 onClick={() => {
                   console.log("Client: New delete button clicked");
@@ -199,15 +197,33 @@ export default function CartPage() {
         </div>
       </div>
 
-      <div className="relative aspect-[3/4] w-full rounded-3xl overflow-hidden mb-8 shadow-2xl">
+      <div className="relative aspect-[3/4] w-full rounded-3xl overflow-hidden mb-8 shadow-2xl group">
         <img 
           src={cart.imageUrl || `https://picsum.photos/seed/cart-${cart.id}/1560/2080`} 
           alt={cart.name}
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8">
-          <div className="flex justify-between items-end">
+        
+        {podCarts.length > 1 && prevCart && nextCart && (
+          <>
+            <button
+              onClick={(e) => { e.stopPropagation(); navigate(`/cart/${prevCart.id}`); }}
+              className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white p-3 rounded-full backdrop-blur-md transition-all z-10 opacity-0 group-hover:opacity-100"
+            >
+              <ChevronLeft size={32} />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); navigate(`/cart/${nextCart.id}`); }}
+              className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white p-3 rounded-full backdrop-blur-md transition-all z-10 opacity-0 group-hover:opacity-100"
+            >
+              <ChevronRight size={32} />
+            </button>
+          </>
+        )}
+
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8 pointer-events-none">
+          <div className="flex justify-between items-end pointer-events-auto">
             <div>
               <div className="flex items-center gap-2 mb-3">
                 {isCartOpen(cart.openTime, cart.closeTime) && (
@@ -241,107 +257,75 @@ export default function CartPage() {
                 </div>
               </div>
             </div>
-            {pod && (
-              <div className="flex gap-2">
-                {podCarts.length > 1 && (
-                  <button 
-                    onClick={() => navigate(`/pod/${pod.id}/map?highlight=${cart.id}`)}
-                    className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors font-medium border border-white/20 shadow-sm"
-                  >
-                    <MapIcon size={18} />
-                    Pod Map
-                  </button>
-                )}
+            <div className="flex gap-2 pointer-events-auto">
+              <button 
+                onClick={() => {
+                  if (menuGallery.length > 0) {
+                    setFullscreenImageIndex(0);
+                  } else {
+                    alert('No menu photos provided for this cart.');
+                  }
+                }}
+                className={`bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors font-medium border border-white/20 shadow-sm ${menuGallery.length === 0 ? 'opacity-50' : ''}`}
+              >
+                <FileText size={18} />
+                Menu
+              </button>
+              {pod && (
                 <button 
-                  onClick={() => navigate(`/?navTo=${pod.id}`)}
+                  onClick={() => navigate(`/pod/${pod.id}/map?highlight=${cart.id}`)}
                   className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors font-medium border border-white/20 shadow-sm"
                 >
-                  <Navigation size={18} />
-                  Directions
+                  <MapIcon size={18} />
+                  Pod Map
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-        <div className="md:col-span-2 space-y-8">
-          <div className="space-y-8">
-            {cart.description && (
-              <section className="bg-white rounded-3xl p-8 shadow-sm border border-stone-100">
-                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                  <Info size={24} className="text-emerald-600" /> About
-                </h2>
-                <p className="text-stone-600 text-lg leading-relaxed">{cart.description}</p>
-              </section>
-            )}
+      <div className="max-w-2xl space-y-8 mb-8">
+        {cart.description && (
+          <section className="bg-white rounded-3xl p-8 shadow-sm border border-stone-100">
+            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+              <Info size={24} className="text-emerald-600" /> About
+            </h2>
+            <p className="text-stone-600 text-lg leading-relaxed">{cart.description}</p>
+          </section>
+        )}
 
-            {(cart.instagramUrl || cart.websiteUrl) && (
-              <section className="bg-white rounded-3xl p-6 shadow-sm border border-stone-100">
-                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                  <Globe size={20} className="text-emerald-600" /> Connect
-                </h2>
-                <div className="space-y-3">
-                  {cart.instagramUrl && (
-                    <a 
-                      href={cart.instagramUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-stone-50 transition-colors text-stone-600 hover:text-pink-600"
-                    >
-                      <Instagram size={20} />
-                      <span className="font-medium">Instagram</span>
-                    </a>
-                  )}
-                  {cart.websiteUrl && (
-                    <a 
-                      href={cart.websiteUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-stone-50 transition-colors text-stone-600 hover:text-emerald-600"
-                    >
-                      <Globe size={20} />
-                      <span className="font-medium">Website</span>
-                    </a>
-                  )}
-                </div>
-              </section>
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-6">
+        {(cart.instagramUrl || cart.websiteUrl) && (
           <section className="bg-white rounded-3xl p-6 shadow-sm border border-stone-100">
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <FileText size={20} className="text-emerald-600" /> Menu
+              <Globe size={20} className="text-emerald-600" /> Connect
             </h2>
-            {menuGallery.length > 0 ? (
-              <div className="grid grid-cols-1 gap-4">
-                {menuGallery.map((url: string, idx: number) => (
-                  <div 
-                    key={idx} 
-                    className="rounded-xl overflow-hidden shadow-sm border border-stone-100 cursor-pointer hover:opacity-90 transition-opacity aspect-[3/4]"
-                    onClick={() => setFullscreenImageIndex(idx)}
-                  >
-                    <img src={url} alt={`Menu ${idx}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-stone-400 italic text-sm">No menu photos provided.</p>
-            )}
+            <div className="space-y-3">
+              {cart.instagramUrl && (
+                <a 
+                  href={cart.instagramUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-stone-50 transition-colors text-stone-600 hover:text-pink-600"
+                >
+                  <Instagram size={20} />
+                  <span className="font-medium">Instagram</span>
+                </a>
+              )}
+              {cart.websiteUrl && (
+                <a 
+                  href={cart.websiteUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-stone-50 transition-colors text-stone-600 hover:text-emerald-600"
+                >
+                  <Globe size={20} />
+                  <span className="font-medium">Website</span>
+                </a>
+              )}
+            </div>
           </section>
-
-          {!cart.ownerEmail && (
-            <button
-              onClick={() => navigate(`/cart/${cart.id}/owner`)}
-              className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold text-lg hover:bg-stone-800 transition-colors shadow-md"
-            >
-              Cart Owner
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
       {fullscreenImageIndex !== null && (

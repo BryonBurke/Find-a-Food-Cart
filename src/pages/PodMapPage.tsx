@@ -191,7 +191,7 @@ export default function PodMapPage() {
     <div className="absolute inset-0 flex flex-col">
       <div className="bg-white/90 backdrop-blur-md border-b border-stone-200 px-4 py-3 flex items-center justify-between z-10 shadow-sm">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate(-1)} className="p-2 hover:bg-stone-100 rounded-full">
+          <button onClick={() => navigate(`/pod/${pod.id}`)} className="p-2 hover:bg-stone-100 rounded-full">
             <ChevronLeft size={24} />
           </button>
           <div>
@@ -306,7 +306,7 @@ export default function PodMapPage() {
                       if (canEdit) {
                         setSelectedCartId(cart.id);
                       } else {
-                        navigate(`/pod/${id}?cart=${cart.id}`);
+                        navigate(`/cart/${cart.id}`);
                       }
                     }
                   }}
@@ -357,7 +357,7 @@ export default function PodMapPage() {
               <button onClick={() => handleNudge(0, 0.000005)} className="bg-stone-100 p-3 rounded-xl hover:bg-stone-200 active:bg-stone-300 flex items-center justify-center transition-colors"><ChevronRight size={24} /></button>
             </div>
             <div className="flex gap-2 w-full mt-2">
-              <button onClick={() => navigate(`/pod/${id}?cart=${selectedCartId}`)} className="flex-1 bg-emerald-100 text-emerald-800 py-3 rounded-xl font-bold text-sm hover:bg-emerald-200 transition-colors">Details</button>
+              <button onClick={() => navigate(`/cart/${selectedCartId}`)} className="flex-1 bg-emerald-100 text-emerald-800 py-3 rounded-xl font-bold text-sm hover:bg-emerald-200 transition-colors">Details</button>
               <button onClick={() => setSelectedCartId(null)} className="flex-1 bg-stone-900 text-white py-3 rounded-xl font-bold text-sm hover:bg-stone-800 transition-colors">Done</button>
             </div>
           </div>

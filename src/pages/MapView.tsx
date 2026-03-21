@@ -70,7 +70,7 @@ export default function MapView() {
             }
           }
         }
-        navigate(`/pod/${closest.id}/map`);
+        navigate(`/pod/${closest.id}`);
       }
     };
     const handleGoToNearestCart = () => {
@@ -89,7 +89,7 @@ export default function MapView() {
           }
         }
         if (closest) {
-          navigate(`/pod/${closest.podId}/map?highlight=${closest.id}`);
+          navigate(`/pod/${closest.podId}?highlight=${closest.id}`);
         }
       }
     };
@@ -456,7 +456,7 @@ export default function MapView() {
                 key={pod.id} 
                 position={{ lat: pod.latitude, lng: pod.longitude }}
                 gmpClickable={true}
-                draggable={!!user}
+                draggable={editMode && !!user}
                 onDragStart={() => setIsDragging(true)}
                 onDragEnd={(e) => {
                   setTimeout(() => setIsDragging(false), 50);
@@ -473,7 +473,7 @@ export default function MapView() {
                   const podCarts = carts.filter(c => c.podId === pod.id);
                   console.log('Pod carts found:', podCarts.length);
                   if (podCarts.length === 1) {
-                    navigate(`/pod/${pod.id}?cart=${podCarts[0].id}`);
+                    navigate(`/pod/${pod.id}?highlight=${podCarts[0].id}`);
                   } else if (searchTag) {
                     navigate(`/pod/${pod.id}?highlightTag=${searchTag}`);
                   } else {
@@ -667,7 +667,7 @@ export default function MapView() {
                 onClick={() => {
                   const podCarts = carts.filter(c => c.podId === navTarget.id);
                   if (podCarts.length === 1) {
-                    navigate(`/pod/${navTarget.id}?cart=${podCarts[0].id}`);
+                    navigate(`/pod/${navTarget.id}?highlight=${podCarts[0].id}`);
                   } else {
                     navigate(`/pod/${navTarget.id}`);
                   }

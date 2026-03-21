@@ -7,12 +7,12 @@ import { TutorialOverlay } from './TutorialOverlay';
 import Login from './Login';
 import MapView from './pages/MapView';
 import PodPage from './pages/PodPage';
+import PodMapPage from './pages/PodMapPage';
 import CartPage from './pages/CartPage';
 import PodForm from './pages/PodForm';
 import CartForm from './pages/CartForm';
 import CartListPage from './pages/CartListPage';
 import CartOwnerPage from './pages/CartOwnerPage';
-import PodMapPage from './pages/PodMapPage';
 import ModeratorPage from './pages/ModeratorPage';
 import { Header, PermissionsGate } from './components/Layout';
 
@@ -38,8 +38,8 @@ function AppRoutes() {
           <Route path="/login" element={<Login />} />
           <Route path="/pod/new" element={user ? <PodForm /> : <Navigate to="/login" />} />
           <Route path="/pod/:id" element={<PodPage />} />
-          <Route path="/pod/:id/edit" element={user ? <PodForm /> : <Navigate to="/login" />} />
           <Route path="/pod/:id/map" element={<PodMapPage />} />
+          <Route path="/pod/:id/edit" element={user ? <PodForm /> : <Navigate to="/login" />} />
           <Route path="/pod/:podId/cart/new" element={user ? <CartForm /> : <Navigate to="/login" />} />
           <Route path="/cart/:id" element={<CartPage />} />
           <Route path="/cart/:cartId/edit" element={user ? <CartForm /> : <Navigate to="/login" />} />
