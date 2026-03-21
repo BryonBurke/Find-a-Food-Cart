@@ -109,14 +109,6 @@ export default function CartPage() {
   const prevCart = currentIndex > 0 ? podCarts[currentIndex - 1] : podCarts[podCarts.length - 1];
   const nextCart = currentIndex < podCarts.length - 1 ? podCarts[currentIndex + 1] : podCarts[0];
 
-  let firstTag = '';
-  try {
-    const tags = typeof cart.tags === 'string' ? JSON.parse(cart.tags || '[]') : (Array.isArray(cart.tags) ? cart.tags : []);
-    if (Array.isArray(tags) && tags.length > 0) {
-      firstTag = typeof tags[0] === 'string' ? tags[0] : (tags[0].tag || tags[0].name);
-    }
-  } catch (e) {}
-
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -165,62 +157,45 @@ export default function CartPage() {
       </AnimatePresence>
 
       <div className="relative w-full h-[100dvh] overflow-hidden group">
-        <div className="absolute top-0 left-0 right-0 p-[4vmin] md:p-[3vmin] flex items-start justify-between z-20 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none">
-          {/* Top Left: First Food Tag */}
-          <div className="w-1/3 flex justify-start pointer-events-auto">
-            {firstTag ? (
-              <span className="text-white font-bold text-[4vmin] md:text-[2.5vmin] uppercase tracking-widest drop-shadow-md">
-                {firstTag}
-              </span>
-            ) : (
-              <button onClick={() => {
-                if (cart?.podId) {
-                  navigate(`/pod/${cart.podId}`);
-                } else {
-                  navigate(-1);
-                }
-              }} className="px-[3vmin] py-[1.5vmin] text-[3vmin] md:text-[1.5vmin] bg-white/20 backdrop-blur-md text-white rounded-[2vmin] font-bold hover:bg-white/30 transition-colors border border-white/20 shadow-sm">
-                POD
-              </button>
-            )}
-          </div>
+        <div className="absolute top-0 left-0 right-0 p-[4vmin] md:p-[3vmin] z-20 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none">
+          <div className="relative flex items-center justify-center min-h-[10vmin]">
+            {/* Top Middle: Name (Centered, Full Width potential) */}
+            <div className="max-w-[90%] pointer-events-auto">
+              <h1 className="bg-black text-white px-[4vmin] py-[1.5vmin] rounded-full shadow-2xl border border-white/10 font-black text-[3.5vmin] md:text-[2.5vmin] uppercase tracking-widest text-center leading-tight">
+                {cart.name}
+              </h1>
+            </div>
 
-          {/* Top Middle: Name */}
-          <div className="w-1/3 flex justify-center pointer-events-auto">
-            <h1 className="text-[6vmin] md:text-[5vmin] font-black text-white text-center leading-tight drop-shadow-xl">
-              {cart.name}
-            </h1>
-          </div>
-
-          {/* Top Right: Edit/Delete */}
-          <div className="w-1/3 flex justify-end gap-[2vmin] pointer-events-auto">
-            {!!user && !!user.uid && !user.isAnonymous && canEdit && editMode && (
-              <>
-                <button 
-                  onClick={() => {
-                    if (user) {
-                      navigate(`/cart/${id}/edit`);
-                    } else {
-                      navigate('/login');
-                    }
-                  }} 
-                  className="p-[2vmin] bg-white/20 backdrop-blur-md hover:bg-white/30 rounded-full transition-colors text-white border border-white/20 shadow-sm"
-                >
-                  <Edit2 className="w-[4vmin] h-[4vmin]" />
-                </button>
-                <button 
-                  onClick={() => {
-                    console.log("Client: New delete button clicked");
-                    setShowDeleteConfirm(true);
-                  }} 
-                  className="flex items-center gap-[1vmin] px-[3vmin] py-[1.5vmin] text-[3vmin] md:text-[1.5vmin] bg-red-500/80 backdrop-blur-md text-white rounded-[2vmin] font-bold hover:bg-red-600 transition-colors border border-red-500/50 shadow-sm"
-                  title="Delete Cart"
-                >
-                  <Trash2 className="w-[4vmin] h-[4vmin]" />
-                  <span className="hidden sm:inline">Delete</span>
-                </button>
-              </>
-            )}
+            {/* Top Right: Edit/Delete (Absolutely positioned to not affect centering) */}
+            <div className="absolute right-0 top-0 flex gap-[2vmin] pointer-events-auto">
+              {!!user && !!user.uid && !user.isAnonymous && canEdit && editMode && (
+                <>
+                  <button 
+                    onClick={() => {
+                      if (user) {
+                        navigate(`/cart/${id}/edit`);
+                      } else {
+                        navigate('/login');
+                      }
+                    }} 
+                    className="p-[2vmin] bg-white/20 backdrop-blur-md hover:bg-white/30 rounded-full transition-colors text-white border border-white/20 shadow-sm"
+                  >
+                    <Edit2 className="w-[4vmin] h-[4vmin]" />
+                  </button>
+                  <button 
+                    onClick={() => {
+                      console.log("Client: New delete button clicked");
+                      setShowDeleteConfirm(true);
+                    }} 
+                    className="flex items-center gap-[1vmin] px-[3vmin] py-[1.5vmin] text-[3vmin] md:text-[1.5vmin] bg-red-500/80 backdrop-blur-md text-white rounded-[2vmin] font-bold hover:bg-red-600 transition-colors border border-red-500/50 shadow-sm"
+                    title="Delete Cart"
+                  >
+                    <Trash2 className="w-[4vmin] h-[4vmin]" />
+                    <span className="hidden sm:inline">Delete</span>
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { ChevronLeft, MapPin, Navigation, Map as MapIcon, Star, Info, Edit2, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, MapPin, Star, Info, Edit2, Plus, Trash2 } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { Pod, Cart } from '../types';
 import { useAuth } from '../AuthContext';
@@ -204,17 +204,15 @@ export default function PodPage() {
           )}
           <button 
             onClick={() => navigate(`/pod/${id}/map`)}
-            className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white rounded-xl font-bold hover:bg-stone-800 transition-colors shadow-lg"
+            className="bg-black text-white px-[4vmin] py-[2.5vmin] rounded-full shadow-2xl border border-white/10 font-black text-[3vmin] md:text-[2vmin] uppercase tracking-widest transition-colors hover:bg-stone-900"
           >
-            <MapIcon size={18} />
-            <span className="hidden sm:inline">Pod Map</span>
+            Map
           </button>
           <button 
             onClick={() => navigate(`/?navTo=${pod.id}`)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors shadow-lg"
+            className="bg-black text-white px-[4vmin] py-[2.5vmin] rounded-full shadow-2xl border border-white/10 font-black text-[3vmin] md:text-[2vmin] uppercase tracking-widest transition-colors hover:bg-stone-900"
           >
-            <Navigation size={18} />
-            <span className="hidden sm:inline">Directions</span>
+            Directions
           </button>
         </div>
       </div>
