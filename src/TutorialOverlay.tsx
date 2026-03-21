@@ -24,7 +24,7 @@ export function TutorialOverlay() {
         };
       case 'GO_TO_POD':
         return {
-          text: "Go to the Pod where you want to add a cart",
+          text: "Open the Pod where you want to enter a cart. Ensure you are logged in and have enabled editing",
           position: "top-24 left-1/2 -translate-x-1/2",
           arrow: "hidden",
           buttons: [
