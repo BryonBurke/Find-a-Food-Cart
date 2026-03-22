@@ -168,7 +168,7 @@ export default function CartPage() {
         )}
       </AnimatePresence>
 
-      <div className="relative w-full h-[100dvh] overflow-hidden group">
+      <div className="relative w-full h-full overflow-hidden group">
         <div className="absolute top-0 left-0 right-0 p-[4vmin] md:p-[3vmin] z-20 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none">
           <div className="relative flex items-center justify-center min-h-[10vmin]">
             {/* Top Middle: Name (Centered, Full Width potential) */}
@@ -292,7 +292,7 @@ export default function CartPage() {
               }}
               className={`bg-black text-white px-[4vmin] py-[2.5vmin] rounded-full shadow-2xl border border-white/10 font-black text-[3vmin] md:text-[2vmin] uppercase tracking-widest transition-colors hover:bg-stone-900 ${menuGallery.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              Menu
+              MENU
             </button>
 
             <button 
@@ -308,15 +308,15 @@ export default function CartPage() {
               CLOSE
             </button>
 
-            {pod && (
+            {(pod || cart?.podId) && (
               <button 
                 onClick={() => {
                   nextStep('CLICK_POD_MAP', 'USE_PLACE_ON_MAP');
-                  navigate(`/pod/${pod.id}/map?highlight=${cart.id}`);
+                  navigate(`/pod/${pod?.id || cart?.podId}/map?highlight=${cart?.id}`);
                 }}
                 className="bg-black text-white px-[4vmin] py-[2.5vmin] rounded-full shadow-2xl border border-white/10 font-black text-[3vmin] md:text-[2vmin] uppercase tracking-widest transition-colors hover:bg-stone-900"
               >
-                Map
+                MAP
               </button>
             )}
           </div>
