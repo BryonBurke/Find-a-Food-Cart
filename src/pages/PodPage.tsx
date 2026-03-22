@@ -311,7 +311,7 @@ export default function PodPage() {
                           'bg-yellow-500'
                         }`}>
                           <span className="text-[10px] font-black text-white uppercase tracking-wider">
-                            {status === 'open' ? 'Open' : status === 'closed' ? 'Closed' : 'Unknown'}
+                            {status === 'open' ? 'Open' : status === 'closed' ? 'Closed' : 'Hours Unknown'}
                           </span>
                         </div>
                       );

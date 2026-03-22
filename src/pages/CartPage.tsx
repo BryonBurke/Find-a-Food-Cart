@@ -208,7 +208,7 @@ export default function CartPage() {
                     'bg-yellow-500 hover:bg-yellow-600'
                   }`}
                 >
-                  {status === 'open' ? 'Open' : status === 'closed' ? 'Closed' : 'Unknown'}
+                  {status === 'open' ? 'Open' : status === 'closed' ? 'Closed' : 'Hours Unknown'}
                 </button>
                 
                 <AnimatePresence>
