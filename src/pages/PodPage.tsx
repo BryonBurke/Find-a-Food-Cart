@@ -21,6 +21,7 @@ export default function PodPage() {
   const [loading, setLoading] = useState(true);
   const [showDeletePodConfirm, setShowDeletePodConfirm] = useState(false);
   const [cartToDelete, setCartToDelete] = useState<Cart | null>(null);
+  const [activeTagBubble, setActiveTagBubble] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
@@ -175,10 +176,7 @@ export default function PodPage() {
         </AnimatePresence>
 
         <div className="flex-shrink-0 mb-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <button onClick={() => navigate('/')} className="p-2 hover:bg-stone-200 rounded-full transition-colors">
-              <ChevronLeft size={24} />
-            </button>
+          <div className="flex items-center justify-end">
             {canEdit && editMode && (
               <div className="flex gap-1">
                 <button 
@@ -204,21 +202,6 @@ export default function PodPage() {
             <div className="text-stone-500 font-medium mb-4 text-sm md:text-base">
               {pod.address}
             </div>
-            
-            <div className="flex gap-2">
-              <button 
-                onClick={() => navigate(`/pod/${id}/map`)}
-                className="flex-1 bg-black text-white py-3 rounded-full shadow-lg border border-white/10 font-black text-xs md:text-sm uppercase tracking-widest transition-all hover:bg-stone-900 active:scale-[0.98] text-center"
-              >
-                Map
-              </button>
-              <button 
-                onClick={() => navigate(`/?navTo=${pod.id}`)}
-                className="flex-1 bg-black text-white py-3 rounded-full shadow-lg border border-white/10 font-black text-xs md:text-sm uppercase tracking-widest transition-all hover:bg-stone-900 active:scale-[0.98] text-center"
-              >
-                Directions
-              </button>
-            </div>
           </div>
         </div>
 
@@ -232,7 +215,7 @@ export default function PodPage() {
             </section>
           )}
 
-          <section className="pb-8">
+          <section className="pb-32">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-stone-900">Food Carts</h2>
               {canEdit && editMode && (
@@ -270,6 +253,55 @@ export default function PodPage() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                       referrerPolicy="no-referrer"
                     />
+                    
+                    {/* Food Type Button and Bubble */}
+                    {(() => {
+                      try {
+                        const tags = typeof cart.tags === 'string' ? JSON.parse(cart.tags || '[]') : (Array.isArray(cart.tags) ? cart.tags : []);
+                        if (Array.isArray(tags) && tags.length > 0) {
+                          const firstTag = tags[0];
+                          const firstName = typeof firstTag === 'string' ? firstTag : (firstTag.name || firstTag.tag || '');
+                          const allNames = tags.map(t => typeof t === 'string' ? t : (t.name || t.tag || ''));
+
+                          return (
+                            <div className="absolute top-4 left-4 z-30">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveTagBubble(activeTagBubble === cart.id ? null : cart.id);
+                                }}
+                                className="bg-white/90 backdrop-blur-sm text-stone-900 px-3 py-1.5 rounded-full shadow-lg text-[10px] font-black uppercase tracking-wider border border-stone-200 hover:bg-white transition-colors"
+                              >
+                                {firstName}
+                              </button>
+                              
+                              <AnimatePresence>
+                                {activeTagBubble === cart.id && (
+                                  <motion.div
+                                    initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.8, y: 10 }}
+                                    className="absolute top-full mt-2 left-0 bg-white rounded-2xl shadow-2xl border border-stone-100 p-3 min-w-[120px] z-50"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <div className="flex flex-col gap-1.5">
+                                      {allNames.map((name, idx) => (
+                                        <div key={idx} className="text-[11px] font-bold text-stone-700 whitespace-nowrap px-2 py-1 bg-stone-50 rounded-lg">
+                                          {name}
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <div className="absolute -top-1.5 left-4 w-3 h-3 bg-white border-t border-l border-stone-100 rotate-45" />
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          );
+                        }
+                      } catch (e) {}
+                      return null;
+                    })()}
+
                     {(() => {
                       const status = getCartStatus(cart.openTime, cart.closeTime, cart.weeklyHours);
                       return (
@@ -290,7 +322,7 @@ export default function PodPage() {
                           e.stopPropagation();
                           setCartToDelete(cart);
                         }}
-                        className="absolute top-4 left-4 bg-red-500 text-white p-2 rounded-full shadow-lg hover:bg-red-600 transition-colors"
+                        className="absolute top-4 right-14 bg-red-500 text-white p-2 rounded-full shadow-lg hover:bg-red-600 transition-colors z-30"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -311,6 +343,32 @@ export default function PodPage() {
             </div>
           </section>
         </div>
+
+        {/* Bottom Action Buttons */}
+        <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-center p-[4vmin] md:p-[6vmin] pointer-events-none">
+          <div className="flex items-center justify-center gap-[2vmin] pointer-events-auto">
+            <button 
+              onClick={() => navigate(`/?navTo=${pod.id}`)}
+              className="bg-black text-white px-[4vmin] py-[2.5vmin] rounded-full shadow-2xl border border-white/10 font-black text-[3vmin] md:text-[2vmin] uppercase tracking-widest transition-colors hover:bg-stone-900"
+            >
+              DIRECTIONS
+            </button>
+            <button 
+              onClick={() => navigate('/')} 
+              className="bg-black text-white px-[5vmin] py-[3vmin] rounded-full shadow-2xl border border-white/10 font-black text-[4vmin] md:text-[2.5vmin] uppercase tracking-widest transition-colors hover:bg-stone-900"
+            >
+              CLOSE
+            </button>
+            <button 
+              onClick={() => navigate(`/pod/${id}/map`)}
+              className="bg-black text-white px-[4vmin] py-[2.5vmin] rounded-full shadow-2xl border border-white/10 font-black text-[3vmin] md:text-[2vmin] uppercase tracking-widest transition-colors hover:bg-stone-900"
+            >
+              MAP
+            </button>
+          </div>
+        </div>
+
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-stone-50 via-stone-50/80 to-transparent pointer-events-none" />
       </div>
     </motion.div>
   );
