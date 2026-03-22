@@ -18,9 +18,9 @@ const CartListPage = lazy(() => import('./pages/CartListPage'));
 const CartOwnerPage = lazy(() => import('./pages/CartOwnerPage'));
 const ModeratorPage = lazy(() => import('./pages/ModeratorPage'));
 
-function LoadingSpinner() {
+function LoadingSpinner({ full = false }: { full?: boolean }) {
   return (
-    <div className="h-screen w-screen flex items-center justify-center bg-stone-50">
+    <div className={`${full ? 'h-[100dvh] w-screen' : 'h-full w-full'} flex items-center justify-center bg-stone-50`}>
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
     </div>
   );
@@ -31,11 +31,11 @@ function AppRoutes() {
   const location = useLocation();
 
   if (loading) {
-    return <LoadingSpinner />;
+    return <LoadingSpinner full />;
   }
 
   return (
-    <div className="h-screen flex flex-col bg-stone-50 overflow-hidden">
+    <div className="h-[100dvh] flex flex-col bg-stone-50 overflow-hidden">
       <Header />
       <main className="flex-1 relative overflow-y-auto">
         <TutorialOverlay />

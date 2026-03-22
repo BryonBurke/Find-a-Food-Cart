@@ -82,88 +82,92 @@ export default function CartListPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center h-full">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 pb-24">
-      <div className="flex items-center gap-4 mb-8">
-        <button onClick={() => navigate(-1)} className="p-2 hover:bg-stone-200 rounded-full transition-colors">
-          <ChevronLeft size={24} />
-        </button>
-        <h1 className="text-3xl font-bold flex items-center gap-3">
-          <Navigation className="text-emerald-600" />
-          Cart List
-        </h1>
-      </div>
-
-      {error && !userLocation && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-700 p-4 rounded-2xl mb-8 flex items-center gap-3">
-          <MapPin size={20} />
-          <p className="text-sm font-medium">{error}</p>
-        </div>
-      )}
-
-      <div className="space-y-4">
-        {cartsWithDistance.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-stone-100 shadow-sm">
-            <Utensils size={48} className="mx-auto text-stone-300 mb-4" />
-            <h2 className="text-xl font-semibold text-stone-600">No carts found</h2>
+    <div className="h-full flex flex-col overflow-hidden">
+      <div className="flex-1 overflow-y-auto p-6 pb-24">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center gap-4 mb-8">
+            <button onClick={() => navigate(-1)} className="p-2 hover:bg-stone-200 rounded-full transition-colors">
+              <ChevronLeft size={24} />
+            </button>
+            <h1 className="text-3xl font-bold flex items-center gap-3">
+              <Navigation className="text-emerald-600" />
+              Cart List
+            </h1>
           </div>
-        ) : (
-          cartsWithDistance.map((cart) => (
-            <div
-              key={cart.id}
-              onClick={() => navigate(`/cart/${cart.id}`)}
-              className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm hover:shadow-md hover:border-emerald-100 transition-all cursor-pointer group"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-stone-100 flex-shrink-0">
-                    <img
-                      src={cart.imageUrl || `https://picsum.photos/seed/cart-${cart.id}/200/200`}
-                      alt={cart.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      referrerPolicy="no-referrer"
-                    />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-stone-900 group-hover:text-emerald-600 transition-colors">
-                      {cart.name}
-                    </h3>
-                    {(() => {
-                      try {
-                        const tags = typeof cart.tags === 'string' ? JSON.parse(cart.tags || '[]') : (Array.isArray(cart.tags) ? cart.tags : []);
-                        if (Array.isArray(tags) && tags.length > 0) {
-                          return (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {tags.slice(0, 3).map((t, i) => (
-                                <span key={i} className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded text-[10px] font-mono font-bold border border-stone-200" title={t.name}>
-                                  {typeof t === 'string' ? t.toUpperCase() : (t.tag || t.name).toUpperCase()}
-                                </span>
-                              ))}
-                            </div>
-                          );
-                        }
-                      } catch (e) {}
-                      return null;
-                    })()}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="flex items-center gap-1 text-emerald-600 font-bold">
-                    <Navigation size={14} className="rotate-45" />
-                    <span>{formatDistance(cart.distance)}</span>
-                  </div>
-                  <p className="text-[10px] text-stone-400 uppercase font-bold tracking-tighter">away</p>
-                </div>
-              </div>
+
+          {error && !userLocation && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-700 p-4 rounded-2xl mb-8 flex items-center gap-3">
+              <MapPin size={20} />
+              <p className="text-sm font-medium">{error}</p>
             </div>
-          ))
-        )}
+          )}
+
+          <div className="space-y-4">
+            {cartsWithDistance.length === 0 ? (
+              <div className="text-center py-20 bg-white rounded-3xl border border-stone-100 shadow-sm">
+                <Utensils size={48} className="mx-auto text-stone-300 mb-4" />
+                <h2 className="text-xl font-semibold text-stone-600">No carts found</h2>
+              </div>
+            ) : (
+              cartsWithDistance.map((cart) => (
+                <div
+                  key={cart.id}
+                  onClick={() => navigate(`/cart/${cart.id}`)}
+                  className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm hover:shadow-md hover:border-emerald-100 transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl overflow-hidden bg-stone-100 flex-shrink-0">
+                        <img
+                          src={cart.imageUrl || `https://picsum.photos/seed/cart-${cart.id}/200/200`}
+                          alt={cart.name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-stone-900 group-hover:text-emerald-600 transition-colors">
+                          {cart.name}
+                        </h3>
+                        {(() => {
+                          try {
+                            const tags = typeof cart.tags === 'string' ? JSON.parse(cart.tags || '[]') : (Array.isArray(cart.tags) ? cart.tags : []);
+                            if (Array.isArray(tags) && tags.length > 0) {
+                              return (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {tags.slice(0, 3).map((t, i) => (
+                                    <span key={i} className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded text-[10px] font-mono font-bold border border-stone-200" title={typeof t === 'string' ? t : (t.name || '')}>
+                                      {typeof t === 'string' ? t.toUpperCase() : (t.tag || t.name).toUpperCase()}
+                                    </span>
+                                  ))}
+                                </div>
+                              );
+                            }
+                          } catch (e) {}
+                          return null;
+                        })()}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="flex items-center gap-1 text-emerald-600 font-bold">
+                        <Navigation size={14} className="rotate-45" />
+                        <span>{formatDistance(cart.distance)}</span>
+                      </div>
+                      <p className="text-[10px] text-stone-400 uppercase font-bold tracking-tighter">away</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

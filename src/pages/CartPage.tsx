@@ -17,7 +17,6 @@ export default function CartPage() {
   const navigate = useNavigate();
   const [cart, setCart] = useState<Cart | null>(null);
   const [pod, setPod] = useState<Pod | null>(null);
-  const [podCarts, setPodCarts] = useState<Cart[]>([]);
   const [loading, setLoading] = useState(true);
   const [fullscreenImageIndex, setFullscreenImageIndex] = useState<number | null>(null);
   const [showHours, setShowHours] = useState(false);
@@ -32,10 +31,6 @@ export default function CartPage() {
         const podRes = await fetch(`/api/pods/${data.podId}`);
         const podData = await podRes.json();
         setPod(podData);
-
-        const cartsRes = await fetch(`/api/pods/${data.podId}/carts`);
-        const cartsData = await cartsRes.json();
-        setPodCarts(Array.isArray(cartsData) ? cartsData : []);
       } catch (err) {
         console.error(err);
       } finally {
@@ -109,10 +104,6 @@ export default function CartPage() {
     user.email?.toLowerCase() === 'bryonparis@gmail.com'
   );
 
-  const currentIndex = podCarts.findIndex(c => c.id === cart.id);
-  const prevCart = currentIndex > 0 ? podCarts[currentIndex - 1] : podCarts[podCarts.length - 1];
-  const nextCart = currentIndex < podCarts.length - 1 ? podCarts[currentIndex + 1] : podCarts[0];
-
   const formatTime = (time?: string) => {
     if (!time) return '';
     const [hours, minutes] = time.split(':').map(Number);
@@ -134,7 +125,7 @@ export default function CartPage() {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="w-full h-screen bg-black overflow-hidden"
+      className="w-full h-full bg-black overflow-hidden"
     >
       <AnimatePresence>
         {showDeleteConfirm && (
@@ -284,25 +275,13 @@ export default function CartPage() {
         <img 
           src={cart.imageUrl || `https://picsum.photos/seed/cart-${cart.id}/1560/2080`} 
           alt={cart.name}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain"
           referrerPolicy="no-referrer"
         />
         
-        <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-between p-[4vmin] md:p-[6vmin] pointer-events-none">
-          {/* Left Slot: Previous Cart */}
-          <div className="w-[15%] flex justify-start pointer-events-auto">
-            {podCarts.length > 1 && prevCart && (
-              <button
-                onClick={(e) => { e.stopPropagation(); navigate(`/cart/${prevCart.id}`); }}
-                className="bg-black text-white p-[2.5vmin] rounded-full shadow-2xl border border-white/10"
-              >
-                <ChevronLeft className="w-[6vw] h-[6vw] md:w-[4vmin] md:h-[4vmin]" />
-              </button>
-            )}
-          </div>
-
-          {/* Center Slot: Action Buttons */}
-          <div className="w-[70%] flex items-center justify-center gap-[2vmin] pointer-events-auto">
+        <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-center p-[4vmin] md:p-[6vmin] pointer-events-none">
+          {/* Action Buttons */}
+          <div className="flex items-center justify-center gap-[2vmin] pointer-events-auto">
             <button 
               onClick={() => {
                 if (menuGallery.length > 0) {
@@ -326,7 +305,7 @@ export default function CartPage() {
               }} 
               className="bg-black text-white px-[5vmin] py-[3vmin] rounded-full shadow-2xl border border-white/10 font-black text-[4vmin] md:text-[2.5vmin] uppercase tracking-widest transition-colors hover:bg-stone-900"
             >
-              POD
+              CLOSE
             </button>
 
             {pod && (
@@ -338,18 +317,6 @@ export default function CartPage() {
                 className="bg-black text-white px-[4vmin] py-[2.5vmin] rounded-full shadow-2xl border border-white/10 font-black text-[3vmin] md:text-[2vmin] uppercase tracking-widest transition-colors hover:bg-stone-900"
               >
                 Map
-              </button>
-            )}
-          </div>
-
-          {/* Right Slot: Next Cart */}
-          <div className="w-[15%] flex justify-end pointer-events-auto">
-            {podCarts.length > 1 && nextCart && (
-              <button
-                onClick={(e) => { e.stopPropagation(); navigate(`/cart/${nextCart.id}`); }}
-                className="bg-black text-white p-[2.5vmin] rounded-full shadow-2xl border border-white/10"
-              >
-                <ChevronRight className="w-[6vw] h-[6vw] md:w-[4vmin] md:h-[4vmin]" />
               </button>
             )}
           </div>
@@ -412,7 +379,7 @@ export default function CartPage() {
           <img 
             src={menuGallery[fullscreenImageIndex]} 
             alt="Fullscreen Menu" 
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain"
             referrerPolicy="no-referrer"
           />
         </div>

@@ -97,7 +97,7 @@ export default function PodPage() {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="h-screen flex flex-col bg-stone-50 overflow-hidden"
+      className="h-full flex flex-col bg-stone-50 overflow-hidden"
     >
       <div className="max-w-4xl mx-auto w-full flex flex-col h-full p-4">
         <AnimatePresence>

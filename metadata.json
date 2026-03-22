@@ -1,5 +1,5 @@
 {
-  "name": "Cart Hours Manager",
+  "name": "Get Foodcart",
   "description": "Manage and view food cart operating hours with a weekly schedule.",
   "requestFramePermissions": [
     "geolocation",
