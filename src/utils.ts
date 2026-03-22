@@ -60,20 +60,33 @@ export const uploadFileToStorage = async (file: File): Promise<string> => {
   return Promise.race([uploadPromise, timeoutPromise]);
 };
 
-export function isCartOpen(openTime?: string, closeTime?: string, weeklyHours?: any): boolean {
+export function getCartStatus(openTime?: string, closeTime?: string, weeklyHours?: any): 'open' | 'closed' | 'unknown' {
   const now = new Date();
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const currentDay = days[now.getDay()];
 
-  if (weeklyHours && weeklyHours[currentDay]) {
+  const hasWeeklyHours = weeklyHours && Object.keys(weeklyHours).length > 0;
+  const hasBasicHours = openTime && closeTime;
+
+  if (!hasWeeklyHours && !hasBasicHours) return 'unknown';
+
+  if (hasWeeklyHours && weeklyHours[currentDay]) {
     const dayData = weeklyHours[currentDay];
-    if (dayData.closed) return false;
+    if (dayData.closed) return 'closed';
     if (dayData.open && dayData.close) {
-      return checkTime(dayData.open, dayData.close);
+      return checkTime(dayData.open, dayData.close) ? 'open' : 'closed';
     }
   }
 
-  return checkTime(openTime, closeTime);
+  if (hasBasicHours) {
+    return checkTime(openTime, closeTime) ? 'open' : 'closed';
+  }
+
+  return 'unknown';
+}
+
+export function isCartOpen(openTime?: string, closeTime?: string, weeklyHours?: any): boolean {
+  return getCartStatus(openTime, closeTime, weeklyHours) === 'open';
 }
 
 function checkTime(openTime?: string, closeTime?: string): boolean {

@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Star, Map as MapIcon, Navigation, Camera, In
 import { Pod, Cart } from '../types';
 import { useAuth } from '../AuthContext';
 import { useEditMode } from '../EditModeContext';
-import { isCartOpen } from '../utils';
+import { isCartOpen, getCartStatus } from '../utils';
 
 import { useTutorial } from '../TutorialContext';
 
@@ -115,8 +115,7 @@ export default function CartPage() {
   };
 
   const getStatus = () => {
-    if (!cart.openTime && !cart.closeTime && (!cart.weeklyHours || Object.keys(cart.weeklyHours).length === 0)) return 'unknown';
-    return isCartOpen(cart.openTime, cart.closeTime, cart.weeklyHours) ? 'open' : 'closed';
+    return getCartStatus(cart.openTime, cart.closeTime, cart.weeklyHours);
   };
 
   const status = getStatus();

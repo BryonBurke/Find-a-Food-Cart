@@ -30,7 +30,7 @@ export const CartHoursTable: React.FC<CartHoursTableProps> = ({ hours, onChange 
   const handleDayChange = (day: string, field: keyof DayHours, value: any) => {
     const newHours = { ...hours };
     if (!newHours[day]) {
-      newHours[day] = { open: '09:00', close: '17:00', closed: false };
+      newHours[day] = { open: '', close: '', closed: false };
     }
     newHours[day] = { ...newHours[day], [field]: value };
     onChange(newHours);
@@ -38,7 +38,7 @@ export const CartHoursTable: React.FC<CartHoursTableProps> = ({ hours, onChange 
 
   const toggleClosed = (day: string) => {
     const newHours = { ...hours };
-    const current = newHours[day] || { open: '09:00', close: '17:00', closed: false };
+    const current = newHours[day] || { open: '', close: '', closed: false };
     newHours[day] = { ...current, closed: !current.closed };
     onChange(newHours);
   };

@@ -6,7 +6,7 @@ import { AnimatePresence } from 'motion/react';
 import { Pod, Cart } from '../types';
 import { useAuth } from '../AuthContext';
 import { useEditMode } from '../EditModeContext';
-import { isCartOpen } from '../utils';
+import { isCartOpen, getCartStatus } from '../utils';
 
 export default function PodPage() {
   const { id } = useParams();
@@ -271,7 +271,7 @@ export default function PodPage() {
                       referrerPolicy="no-referrer"
                     />
                     {(() => {
-                      const status = isCartOpen(cart.openTime, cart.closeTime, cart.weeklyHours) ? 'open' : 'closed';
+                      const status = getCartStatus(cart.openTime, cart.closeTime, cart.weeklyHours);
                       return (
                         <div className={`absolute top-4 right-4 px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 transition-colors ${
                           status === 'open' ? 'bg-green-500' : 
