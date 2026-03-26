@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { 
-  ChevronLeft, Utensils, Search, Menu, X,
+  ChevronLeft, Search, Menu, X,
   Map as MapIcon, List, Edit2, Trash2, Info, 
   ExternalLink, LogOut, ShieldCheck, Star, Plus,
   Navigation, Play
 } from 'lucide-react';
+import { SimplePodIcon } from './Icons';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../AuthContext';
 import { useEditMode } from '../EditModeContext';
@@ -166,8 +167,27 @@ export function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPag
 }
 
 export function Header() {
+  const { user } = useAuth();
+  const { editMode } = useEditMode();
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    if (user && editMode) {
+      const requestCamera = async () => {
+        try {
+          if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            stream.getTracks().forEach(track => track.stop());
+          }
+        } catch (err) {
+          console.warn("Camera permission denied in edit mode:", err);
+        }
+      };
+      requestCamera();
+    }
+  }, [user, editMode]);
+
   const [searchParams, setSearchParams] = useSearchParams();
   const isHome = location.pathname === '/';
   const podIdMatch = location.pathname.match(/^\/pod\/([^/]+)/);
@@ -201,8 +221,8 @@ export function Header() {
 
   return (
     <header className="bg-white/80 backdrop-blur-md border-b border-stone-200 sticky top-0 z-[2000] px-4 py-3 flex-shrink-0">
-      <div className="max-w-7xl mx-auto flex items-center justify-between pointer-events-auto">
-        <div className="flex items-center gap-4">
+      <div className="max-w-7xl mx-auto flex items-center pointer-events-auto">
+        <div className="flex-1 flex items-center gap-4">
           {location.pathname !== '/' && (
             <button onClick={() => navigate(-1)} className="p-2 hover:bg-stone-100 rounded-full transition-colors text-stone-600">
               <ChevronLeft size={24} />
@@ -210,54 +230,62 @@ export function Header() {
           )}
           <Link 
             to="/" 
-            className="flex items-center gap-2 group"
+            className="flex items-end gap-2 group"
             onClick={() => window.dispatchEvent(new Event('reset-map'))}
           >
-            <div className="bg-emerald-600 p-2 rounded-xl group-hover:rotate-12 transition-transform shadow-lg">
-              <Utensils className="text-white" size={20} />
+            <div className="group-hover:rotate-12 transition-transform">
+              <SimplePodIcon className="text-emerald-600" size={37} />
             </div>
-            <span className="text-lg sm:text-xl font-black tracking-tighter text-stone-900 drop-shadow-md hidden sm:inline">GET FOODCART <span className="text-[10px] sm:text-xs text-emerald-600">v2</span></span>
-            <span className="text-lg font-black tracking-tighter text-stone-900 drop-shadow-md sm:hidden">GFC <span className="text-[10px] text-emerald-600">v2</span></span>
+            <span className="text-[28px] font-black tracking-tighter text-stone-900 drop-shadow-md hidden sm:inline leading-none">
+              GET FOODCART <span className="text-[13px] text-emerald-600">v2</span>
+            </span>
+            <span className="text-[28px] font-black tracking-tighter text-stone-900 drop-shadow-md sm:hidden leading-none">
+              GFC <span className="text-[13px] text-emerald-600">v2</span>
+            </span>
           </Link>
         </div>
 
         {isHome && (
-          <div className="mx-4 flex-1 max-w-xs">
-            {searchTag ? (
-              <div className="bg-emerald-600 rounded-full shadow-lg border border-emerald-500 flex items-center justify-between px-4 py-2 text-white">
-                <div className="flex items-center overflow-hidden">
-                  <Search size={18} className="mr-2 opacity-80 flex-shrink-0" />
-                  <span className="font-bold text-sm uppercase truncate">{searchTag}</span>
+          <div className="flex-1 flex justify-center">
+            <div className="w-full max-w-xs mx-4">
+              {searchTag ? (
+                <div className="bg-emerald-600 rounded-full shadow-lg border border-emerald-500 flex items-center justify-between px-4 py-2 text-white">
+                  <div className="flex items-center overflow-hidden">
+                    <Search size={18} className="mr-2 opacity-80 flex-shrink-0" />
+                    <span className="font-bold text-sm uppercase truncate">{searchTag}</span>
+                  </div>
+                  <button 
+                    onClick={() => setSearchTag('')}
+                    className="ml-2 bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full text-xs font-bold transition-colors flex-shrink-0"
+                  >
+                    Done
+                  </button>
                 </div>
-                <button 
-                  onClick={() => setSearchTag('')}
-                  className="ml-2 bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full text-xs font-bold transition-colors flex-shrink-0"
-                >
-                  Done
-                </button>
-              </div>
-            ) : (
-              <div className="bg-white rounded-full shadow-lg border border-stone-200 flex items-center px-4 py-2 relative">
-                <Search size={18} className="text-stone-400 mr-2 flex-shrink-0" />
-                <select
-                  className="w-full bg-transparent outline-none text-sm font-semibold text-stone-700 uppercase appearance-none cursor-pointer"
-                  value={searchTag}
-                  onChange={e => setSearchTag(e.target.value)}
-                >
-                  <option value="">All Food Types</option>
-                  {availableTags.map(t => (
-                    <option key={t.tag} value={t.tag}>{t.name}</option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
-                  <svg className="h-4 w-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+              ) : (
+                <div className="bg-white rounded-full shadow-lg border border-stone-200 flex items-center px-4 py-2 relative">
+                  <Search size={18} className="text-stone-400 mr-2 flex-shrink-0" />
+                  <select
+                    className="w-full bg-transparent outline-none text-sm font-semibold text-stone-700 uppercase appearance-none cursor-pointer"
+                    value={searchTag}
+                    onChange={e => setSearchTag(e.target.value)}
+                  >
+                    <option value="">All Food Types</option>
+                    {availableTags.map(t => (
+                      <option key={t.tag} value={t.tag}>{t.name}</option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
+                    <svg className="h-4 w-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
 
-        <HamburgerMenu podId={podId} />
+        <div className="flex-1 flex justify-end">
+          <HamburgerMenu podId={podId} />
+        </div>
       </div>
     </header>
   );
@@ -280,28 +308,6 @@ export function PermissionsGate({ children }: { children: React.ReactNode }) {
     }, 8000); // Global 8s timeout for permissions
 
     const requestPermissions = async () => {
-      try {
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          // Try video first
-          try {
-            const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
-            videoStream.getTracks().forEach(track => track.stop());
-          } catch (vErr) {
-            console.warn("Camera permission denied:", vErr);
-          }
-          
-          // Then try audio
-          try {
-            const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            audioStream.getTracks().forEach(track => track.stop());
-          } catch (aErr) {
-            console.warn("Microphone permission denied:", aErr);
-          }
-        }
-      } catch (err) {
-        console.warn("Permissions request error:", err);
-      }
-
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           () => {
@@ -330,7 +336,7 @@ export function PermissionsGate({ children }: { children: React.ReactNode }) {
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
         <div className="space-y-2">
           <p className="text-stone-900 font-bold text-lg">Setting up your experience...</p>
-          <p className="text-stone-500 text-sm max-w-xs">We're requesting camera and location permissions to help you find and document food carts.</p>
+          <p className="text-stone-500 text-sm max-w-xs">We're requesting location permissions to help you find food carts near you.</p>
           <p className="text-emerald-600 text-xs mt-4 bg-emerald-50 p-3 rounded-xl border border-emerald-100">
             <strong>Tip:</strong> If permissions are blocked, try opening the app in a <strong>new tab</strong> using the button in the top right menu.
           </p>

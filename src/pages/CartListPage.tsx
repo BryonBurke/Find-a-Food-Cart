@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, MapPin, Utensils, Navigation } from 'lucide-react';
+import { ChevronLeft, MapPin, Navigation } from 'lucide-react';
+import { SimplePodIcon } from '../components/Icons';
 import { Cart, Pod } from '../types';
 import { getDistance } from '../utils';
 
@@ -112,7 +113,7 @@ export default function CartListPage() {
           <div className="space-y-4">
             {cartsWithDistance.length === 0 ? (
               <div className="text-center py-20 bg-white rounded-3xl border border-stone-100 shadow-sm">
-                <Utensils size={48} className="mx-auto text-stone-300 mb-4" />
+                <SimplePodIcon size={74} className="mx-auto text-stone-300 mb-4" />
                 <h2 className="text-xl font-semibold text-stone-600">No carts found</h2>
               </div>
             ) : (

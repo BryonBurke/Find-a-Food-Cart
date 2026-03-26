@@ -3,7 +3,6 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, Camera, File, X, Plus, Trash2 } from 'lucide-react';
 import { Cart, Pod } from '../types';
 import { useAuth } from '../AuthContext';
-import { VoiceInput } from '../components/VoiceInput';
 import { CameraInput } from '../components/CameraInput';
 import { FileInput } from '../components/FileInput';
 import { ClockPicker } from '../components/ClockPicker';
@@ -233,10 +232,9 @@ export default function CartForm() {
                   type="text"
                   value={formData.name || ''}
                   onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full pl-4 pr-12 py-3 rounded-xl border border-stone-200 bg-emerald-50 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                  className="w-full pl-4 pr-4 py-3 rounded-xl border border-stone-200 bg-emerald-50 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
                   placeholder="e.g. Matt's BBQ"
                 />
-                <VoiceInput onResult={(text) => setFormData(prev => ({ ...prev, name: text }))} className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-600 hover:text-emerald-700 bg-emerald-100/50" />
               </div>
             </div>
           </div>

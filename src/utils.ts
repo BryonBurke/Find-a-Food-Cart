@@ -68,6 +68,10 @@ export function getCartStatus(openTime?: string, closeTime?: string, weeklyHours
   const hasWeeklyHours = weeklyHours && Object.keys(weeklyHours).length > 0;
   const hasBasicHours = openTime && closeTime;
 
+  if (openTime === '10:00' || (weeklyHours && Object.keys(weeklyHours).length > 0)) {
+     console.log(`getCartStatus check: day=${currentDay}, time=${now.getHours()}:${now.getMinutes()}, hasWeekly=${hasWeeklyHours}, hasBasic=${hasBasicHours}`, { openTime, closeTime, weeklyHours });
+  }
+
   if (!hasWeeklyHours && !hasBasicHours) return 'unknown';
 
   if (hasWeeklyHours && weeklyHours[currentDay]) {

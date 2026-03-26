@@ -4,8 +4,8 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useAuth } from '../AuthContext';
 import { useEditMode } from '../EditModeContext';
-import { UserIcon } from './Icons';
-import { LogOut, Shield, ShieldOff, Menu, Map as MapIcon, Utensils } from 'lucide-react';
+import { UserIcon, SimplePodIcon } from './Icons';
+import { LogOut, Shield, ShieldOff, Menu, Map as MapIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export function Header() {
@@ -30,7 +30,7 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 group">
           <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center text-white group-hover:rotate-12 transition-transform">
-            <Utensils size={20} />
+            <SimplePodIcon size={24} />
           </div>
           <span className="text-xl font-black text-stone-900 tracking-tight">POD<span className="text-emerald-600">MAP</span></span>
         </Link>

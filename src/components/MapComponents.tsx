@@ -3,15 +3,22 @@ import { useMap, useMapsLibrary } from '@vis.gl/react-google-maps';
 import { MapPin } from 'lucide-react';
 import { Pod, Cart } from '../types';
 import { useAuth } from '../AuthContext';
+import { getDistance } from '../utils';
 
 export function Directions({ 
   origin, 
   destination, 
-  onRouteFetched 
+  avoidHighways = false,
+  routeIndex = 0,
+  onRouteFetched,
+  onRoutesAvailable
 }: { 
   origin: [number, number], 
   destination: [number, number],
-  onRouteFetched: (route: google.maps.DirectionsRoute) => void
+  avoidHighways?: boolean,
+  routeIndex?: number,
+  onRouteFetched: (route: google.maps.DirectionsRoute) => void,
+  onRoutesAvailable?: (routes: google.maps.DirectionsRoute[]) => void
 }) {
   const map = useMap();
   const routesLibrary = useMapsLibrary('routes');
@@ -24,6 +31,7 @@ export function Directions({
     setDirectionsRenderer(new routesLibrary.DirectionsRenderer({ 
       map, 
       suppressMarkers: true,
+      preserveViewport: true,
       polylineOptions: {
         strokeColor: '#10b981',
         strokeOpacity: 0.8,
@@ -33,12 +41,17 @@ export function Directions({
   }, [routesLibrary, map]);
 
   useEffect(() => {
-    if (!directionsService || !directionsRenderer) return;
+    if (!directionsService || !directionsRenderer || !map) return;
+
+    directionsRenderer.setMap(map);
+    directionsRenderer.setRouteIndex(routeIndex);
 
     directionsService.route({
       origin: { lat: origin[0], lng: origin[1] },
       destination: { lat: destination[0], lng: destination[1] },
       travelMode: google.maps.TravelMode.DRIVING,
+      provideRouteAlternatives: true,
+      avoidHighways: avoidHighways,
     }).then(response => {
       directionsRenderer.setDirections(response);
       
@@ -47,7 +60,11 @@ export function Directions({
         directionsRenderer.setPanel(panel);
       }
 
-      const route = response.routes[0];
+      if (onRoutesAvailable) {
+        onRoutesAvailable(response.routes);
+      }
+
+      const route = response.routes[routeIndex];
       if (route) {
         onRouteFetched(route);
       }
@@ -59,7 +76,7 @@ export function Directions({
       directionsRenderer.setMap(null);
       directionsRenderer.setPanel(null);
     };
-  }, [directionsService, directionsRenderer, origin, destination, onRouteFetched]);
+  }, [directionsService, directionsRenderer, map, origin, destination, avoidHighways, routeIndex, onRouteFetched, onRoutesAvailable]);
 
   return null;
 }
@@ -68,6 +85,10 @@ export function MapZoomListener() {
   const map = useMap();
   useEffect(() => {
     if (!map) return;
+    const initialZoom = map.getZoom();
+    if (initialZoom !== undefined) {
+      window.dispatchEvent(new CustomEvent('map-zoom-changed', { detail: initialZoom }));
+    }
     const listener = map.addListener('zoom_changed', () => {
       window.dispatchEvent(new CustomEvent('map-zoom-changed', { detail: map.getZoom() }));
     });
@@ -88,34 +109,51 @@ export function MapZoomListener() {
   return null;
 }
 
-export function MapPanner({ location, isActive, panTrigger, resetTrigger, onPanComplete }: { location: [number, number] | null, isActive: boolean, panTrigger?: number, resetTrigger?: number, onPanComplete?: () => void }) {
+export function MapPanner({ location, isActive, panTrigger, resetTrigger, onPanComplete }: { location: { lat: number, lng: number, heading: number | null } | null, isActive: boolean, panTrigger?: number, resetTrigger?: number, onPanComplete?: () => void }) {
   const map = useMap();
   const lastProcessedPan = React.useRef<number>(0);
-  const lastPannedLoc = React.useRef<[number, number] | null>(null);
+  const lastPannedLoc = React.useRef<{ lat: number, lng: number } | null>(null);
+  const isNavStarting = React.useRef(false);
 
   useEffect(() => {
-    if (isActive && location && map) {
-      const shouldPan = !lastPannedLoc.current || 
-                        lastPannedLoc.current[0] !== location[0] || 
-                        lastPannedLoc.current[1] !== location[1];
-      
-      if (shouldPan) {
-        map.panTo({ lat: location[0], lng: location[1] });
-        map.setZoom(18);
-        lastPannedLoc.current = location;
+    if (isActive) {
+      isNavStarting.current = true;
+    } else {
+      isNavStarting.current = false;
+      lastPannedLoc.current = null;
+    }
+  }, [isActive]);
+
+  useEffect(() => {
+    if (!map || !location) return;
+
+    const handleInitialNav = () => {
+      map.setZoom(18);
+      map.setCenter({ lat: location.lat, lng: location.lng });
+      isNavStarting.current = false;
+      lastPannedLoc.current = { lat: location.lat, lng: location.lng };
+    };
+
+    const handlePanTrigger = () => {
+      map.panTo({ lat: location.lat, lng: location.lng });
+      map.setZoom(18);
+      map.setMapTypeId('roadmap');
+      lastProcessedPan.current = panTrigger!;
+      if (onPanComplete) onPanComplete();
+    };
+
+    if (isActive && isNavStarting.current) {
+      handleInitialNav();
+    } else if (panTrigger && panTrigger > lastProcessedPan.current) {
+      handlePanTrigger();
+    } else if (isActive) {
+      const dist = getDistance(lastPannedLoc.current?.lat || 0, lastPannedLoc.current?.lng || 0, location.lat, location.lng);
+      if (dist > 2) {
+        map.panTo({ lat: location.lat, lng: location.lng });
+        lastPannedLoc.current = { lat: location.lat, lng: location.lng };
       }
     }
-  }, [location, isActive, map]);
-
-  useEffect(() => {
-    if (panTrigger && panTrigger > lastProcessedPan.current && location && map) {
-      map.panTo({ lat: location[0], lng: location[1] });
-      map.setZoom(19);
-      map.setMapTypeId('roadmap');
-      lastProcessedPan.current = panTrigger;
-      if (onPanComplete) onPanComplete();
-    }
-  }, [panTrigger, location, map, onPanComplete]);
+  }, [location, isActive, panTrigger, map, onPanComplete]);
 
   useEffect(() => {
     if (resetTrigger && resetTrigger > 0 && map) {

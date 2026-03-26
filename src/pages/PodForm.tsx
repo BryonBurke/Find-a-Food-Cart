@@ -4,7 +4,6 @@ import { ChevronLeft } from 'lucide-react';
 import { Pod } from '../types';
 import { useAuth } from '../AuthContext';
 import { useTutorial } from '../TutorialContext';
-import { VoiceInput } from '../components/VoiceInput';
 import { checkContentSafety } from '../utils';
 
 export default function PodForm() {
@@ -109,12 +108,8 @@ export default function PodForm() {
               type="text"
               value={formData.name || ''}
               onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              className="w-full pl-4 pr-12 py-3 rounded-xl border border-stone-200 bg-emerald-50 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+              className="w-full pl-4 pr-4 py-3 rounded-xl border border-stone-200 bg-emerald-50 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
               placeholder="e.g. Hawthorne Asylum"
-            />
-            <VoiceInput 
-              onResult={(text) => setFormData(prev => ({ ...prev, name: text }))} 
-              className="absolute right-2 top-1/2 -translate-y-1/2"
             />
           </div>
         </div>
