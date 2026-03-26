@@ -22,32 +22,8 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true);
   const [fullscreenImageIndex, setFullscreenImageIndex] = useState<number | null>(null);
   const [showHours, setShowHours] = useState(false);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
-
-  const minSwipeDistance = 50;
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => setTouchEnd(e.targetTouches[0].clientX);
-
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd || menuGallery.length <= 1) return;
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
-    
-    if (isLeftSwipe) {
-      setFullscreenImageIndex((prev) => (prev! + 1) % menuGallery.length);
-    } else if (isRightSwipe) {
-      setFullscreenImageIndex((prev) => (prev! - 1 + menuGallery.length) % menuGallery.length);
-    }
-  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -396,9 +372,6 @@ export default function CartPage() {
         <div 
           className="fixed inset-0 z-[4000] bg-black flex items-center justify-center cursor-pointer"
           onClick={() => setFullscreenImageIndex(null)}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
         >
           {/* Bottom Navigation Row */}
           <div className="absolute bottom-0 left-0 right-0 z-[5001] flex items-center justify-between p-[6vmin] pointer-events-none">
