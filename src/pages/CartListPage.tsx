@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, MapPin, Navigation } from 'lucide-react';
 import { SimplePodIcon } from '../components/Icons';
 import { Cart, Pod } from '../types';
@@ -7,6 +7,8 @@ import { getDistance } from '../utils';
 
 export default function CartListPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const searchTag = searchParams.get('tag') || '';
   const [carts, setCarts] = useState<Cart[]>([]);
   const [pods, setPods] = useState<Pod[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -120,7 +122,7 @@ export default function CartListPage() {
               cartsWithDistance.map((cart) => (
                 <div
                   key={cart.id}
-                  onClick={() => navigate(`/cart/${cart.id}`)}
+                  onClick={() => navigate(`/cart/${cart.id}${searchTag ? `?tag=${searchTag}` : ''}`)}
                   className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm hover:shadow-md hover:border-emerald-100 transition-all cursor-pointer group"
                 >
                   <div className="flex items-center justify-between">

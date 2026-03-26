@@ -17,6 +17,7 @@ const CartForm = lazy(() => import('./pages/CartForm'));
 const CartListPage = lazy(() => import('./pages/CartListPage'));
 const CartOwnerPage = lazy(() => import('./pages/CartOwnerPage'));
 const ModeratorPage = lazy(() => import('./pages/ModeratorPage'));
+const Favorites = lazy(() => import('./pages/Favorites'));
 
 function LoadingSpinner({ full = false }: { full?: boolean }) {
   return (
@@ -52,6 +53,7 @@ function AppRoutes() {
             <Route path="/cart/:cartId/edit" element={user ? <CartForm /> : <Navigate to="/login" />} />
             <Route path="/cart/:id/claim" element={user ? <CartOwnerPage /> : <Navigate to="/login" />} />
             <Route path="/carts" element={<CartListPage />} />
+            <Route path="/favorites" element={<Favorites />} />
             <Route path="/moderator" element={user?.email?.toLowerCase() === 'bryonparis@gmail.com' ? <ModeratorPage /> : <Navigate to="/" />} />
           </Routes>
         </Suspense>

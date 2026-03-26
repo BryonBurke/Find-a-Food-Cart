@@ -243,7 +243,7 @@ export default function PodPage() {
                 return (
                 <div 
                   key={cart.id}
-                  onClick={() => navigate(`/cart/${cart.id}`)}
+                  onClick={() => navigate(`/cart/${cart.id}${highlightTag ? `?tag=${highlightTag}` : ''}`)}
                   className={`bg-white rounded-3xl overflow-hidden border shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer group flex flex-col ${isHighlighted ? 'border-emerald-500 ring-4 ring-emerald-500/20' : 'border-stone-100 hover:border-emerald-200'}`}
                 >
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-stone-100">

@@ -582,7 +582,7 @@ export default function MapView() {
                     const podCarts = carts.filter(c => c.podId === pod.id);
                     console.log('Pod carts found:', podCarts.length);
                     if (podCarts.length === 1) {
-                      navigate(`/pod/${pod.id}?highlight=${podCarts[0].id}`);
+                      navigate(`/pod/${pod.id}?highlight=${podCarts[0].id}${searchTag ? `&highlightTag=${searchTag}` : ''}`);
                     } else if (searchTag) {
                       navigate(`/pod/${pod.id}?highlightTag=${searchTag}`);
                     } else {
@@ -888,7 +888,7 @@ export default function MapView() {
             {matchingCarts.map(cart => (
               <button
                 key={cart.id}
-                onClick={() => navigate(`/cart/${cart.id}`)}
+                onClick={() => navigate(`/cart/${cart.id}?tag=${searchTag}`)}
                 className="w-full p-3 rounded-2xl bg-white border border-stone-100 hover:border-emerald-200 hover:bg-emerald-50/30 transition-all text-left group shadow-sm"
               >
                 <div className="flex justify-between items-start gap-2">

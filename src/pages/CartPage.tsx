@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ChevronRight, Star, Map as MapIcon, Navigation, Camera, Info, Globe, Instagram, FileText, X, Edit2, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, Map as MapIcon, Navigation, Camera, Info, Globe, Instagram, FileText, X, Edit2, Trash2, Heart } from 'lucide-react';
 import { Pod, Cart } from '../types';
 import { useAuth } from '../AuthContext';
 import { useEditMode } from '../EditModeContext';
@@ -15,6 +15,8 @@ export default function CartPage() {
   const { nextStep } = useTutorial();
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const searchTag = searchParams.get('tag') || '';
   const [cart, setCart] = useState<Cart | null>(null);
   const [pod, setPod] = useState<Pod | null>(null);
   const [loading, setLoading] = useState(true);
@@ -22,6 +24,8 @@ export default function CartPage() {
   const [showHours, setShowHours] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
 
   const minSwipeDistance = 50;
 
@@ -55,6 +59,14 @@ export default function CartPage() {
         const podRes = await fetch(`/api/pods/${data.podId}`);
         const podData = await podRes.json();
         setPod(podData);
+
+        if (user) {
+          const favsRes = await fetch('/api/favorites', {
+            headers: { 'Authorization': `Bearer ${await user.getIdToken()}` }
+          });
+          const favs = await favsRes.json();
+          setIsFavorite(favs.some((f: any) => f.id === data.id));
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -62,12 +74,12 @@ export default function CartPage() {
       }
     };
     fetchData();
-  }, [id]);
+  }, [id, user]);
 
   useEffect(() => {
     const handleGoToPodMap = () => {
       if (cart?.podId) {
-        navigate(`/pod/${cart.podId}`);
+        navigate(`/pod/${cart.podId}${searchTag ? `?highlightTag=${searchTag}` : ''}`);
       }
     };
     window.addEventListener('go-to-pod-map', handleGoToPodMap);
@@ -92,7 +104,7 @@ export default function CartPage() {
       });
       console.log(`Client: Delete request returned status ${res.status}`);
       if (res.ok) {
-        navigate(`/pod/${cart.podId}`);
+        navigate(`/pod/${cart.podId}${searchTag ? `?highlightTag=${searchTag}` : ''}`);
       } else {
         const error = await res.json();
         console.error("Client: Failed to delete cart:", error);
@@ -143,6 +155,26 @@ export default function CartPage() {
   };
 
   const status = getStatus();
+
+  const toggleFavorite = async () => {
+    if (!user || !cart || isFavoriteLoading) return;
+    setIsFavoriteLoading(true);
+    try {
+      const token = await user.getIdToken();
+      const method = isFavorite ? 'DELETE' : 'POST';
+      const res = await fetch(`/api/favorites/${cart.id}`, {
+        method,
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setIsFavorite(!isFavorite);
+      }
+    } catch (err) {
+      console.error("Failed to toggle favorite:", err);
+    } finally {
+      setIsFavoriteLoading(false);
+    }
+  };
 
   return (
     <motion.div 
@@ -321,7 +353,7 @@ export default function CartPage() {
             <button 
               onClick={() => {
                 if (cart?.podId) {
-                  navigate(`/pod/${cart.podId}`);
+                  navigate(`/pod/${cart.podId}${searchTag ? `?highlightTag=${searchTag}` : ''}`);
                 } else {
                   navigate(-1);
                 }
@@ -335,7 +367,7 @@ export default function CartPage() {
               <button 
                 onClick={() => {
                   nextStep('CLICK_POD_MAP', 'USE_PLACE_ON_MAP');
-                  navigate(`/pod/${pod?.id || cart?.podId}/map?highlight=${cart?.id}`);
+                  navigate(`/pod/${pod?.id || cart?.podId}/map?highlight=${cart?.id}${searchTag ? `&highlightTag=${searchTag}` : ''}`);
                 }}
                 className="bg-black text-white px-[4vmin] py-[2.5vmin] rounded-full shadow-2xl border border-white/10 font-black text-[3vmin] md:text-[2vmin] uppercase tracking-widest transition-colors hover:bg-stone-900"
               >
@@ -344,6 +376,18 @@ export default function CartPage() {
             )}
           </div>
         </div>
+
+        {user && (
+          <div className="absolute top-[4vmin] right-[4vmin] z-30">
+            <button 
+              onClick={toggleFavorite}
+              disabled={isFavoriteLoading}
+              className={`p-[3vmin] rounded-full shadow-2xl backdrop-blur-md border transition-all ${isFavorite ? 'bg-rose-500 border-rose-400 text-white' : 'bg-white/20 border-white/30 text-white hover:bg-white/30'}`}
+            >
+              <Heart size="6vmin" fill={isFavorite ? "currentColor" : "none"} className={isFavoriteLoading ? 'animate-pulse' : ''} />
+            </button>
+          </div>
+        )}
 
         <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
       </div>

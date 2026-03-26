@@ -4,7 +4,7 @@ import {
   ChevronLeft, Search, Menu, X,
   Map as MapIcon, List, Edit2, Trash2, Info, 
   ExternalLink, LogOut, ShieldCheck, Star, Plus,
-  Navigation, Play
+  Navigation, Play, Heart
 } from 'lucide-react';
 import { SimplePodIcon } from './Icons';
 import { motion, AnimatePresence } from 'motion/react';
@@ -21,6 +21,8 @@ export function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPag
   const { startTutorial, step, nextStep } = useTutorial();
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const searchTag = searchParams.get('tag') || '';
   const menuRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -77,7 +79,7 @@ export function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPag
 
             <div className="p-2">
               <Link 
-                to="/carts" 
+                to={searchTag ? `/carts?tag=${searchTag}` : "/carts"} 
                 onClick={() => setIsOpen(false)}
                 className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-emerald-50 text-stone-700 hover:text-emerald-700 transition-colors"
               >
@@ -98,7 +100,20 @@ export function HamburgerMenu({ isPodPage = false, podId, onDelete }: { isPodPag
               {user && (
                 <button 
                   onClick={() => { 
-                    navigate('/?mode=add'); 
+                    navigate(searchTag ? `/favorites?tag=${searchTag}` : '/favorites');
+                    setIsOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-rose-50 text-stone-700 hover:text-rose-700 transition-colors"
+                >
+                  <Heart size={20} />
+                  <span className="font-bold text-sm">Favorites</span>
+                </button>
+              )}
+
+              {user && (
+                <button 
+                  onClick={() => { 
+                    navigate(searchTag ? `/?mode=add&tag=${searchTag}` : '/?mode=add'); 
                     setIsOpen(false); 
                     nextStep('CLICK_ADD_POD', 'CLICK_MAP');
                   }}
@@ -229,7 +244,7 @@ export function Header() {
             </button>
           )}
           <Link 
-            to="/" 
+            to={searchTag ? `/?tag=${searchTag}` : "/"} 
             className="flex items-end gap-2 group"
             onClick={() => window.dispatchEvent(new Event('reset-map'))}
           >

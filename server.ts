@@ -509,6 +509,70 @@ async function startServer() {
     }
   });
 
+  app.get("/api/favorites", authMiddleware, async (req, res) => {
+    try {
+      const userId = (req as any).user.uid;
+      const snapshot = await getDb().collection("favorites").where("userId", "==", userId).get();
+      const cartIds = snapshot.docs.map(doc => doc.data().cartId);
+      
+      if (cartIds.length === 0) return res.json([]);
+
+      // Fetch cart details for these IDs
+      const cartsSnapshot = await getDb().collection("carts").where(admin.firestore.FieldPath.documentId(), "in", cartIds).get();
+      const favorites = cartsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      res.json(favorites.filter((c: any) => !c.deletedAt));
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  app.post("/api/favorites/:cartId", authMiddleware, async (req, res) => {
+    try {
+      const userId = (req as any).user.uid;
+      const cartId = req.params.cartId;
+      
+      // Check if already favorited
+      const existing = await getDb().collection("favorites")
+        .where("userId", "==", userId)
+        .where("cartId", "==", cartId)
+        .get();
+      
+      if (!existing.empty) return res.json({ success: true });
+
+      await getDb().collection("favorites").add({
+        userId,
+        cartId,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      res.json({ success: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  app.delete("/api/favorites/:cartId", authMiddleware, async (req, res) => {
+    try {
+      const userId = (req as any).user.uid;
+      const cartId = req.params.cartId;
+      
+      const snapshot = await getDb().collection("favorites")
+        .where("userId", "==", userId)
+        .where("cartId", "==", cartId)
+        .get();
+      
+      const batch = getDb().batch();
+      snapshot.docs.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+      
+      res.json({ success: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
   app.post("/api/carts/:id/restore", authMiddleware, async (req, res) => {
     try {
       const cartId = req.params.id;
